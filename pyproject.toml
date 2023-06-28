@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "bharat"
+version = "0.1.0"
+description = "Reusable tools to generate json from the postal location dataset of India."
+authors = ["Akash Damle"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+bharat = { git = "https://github.com/code-kasha/bharat.git", branch = "main" }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
