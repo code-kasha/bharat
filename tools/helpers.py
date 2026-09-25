@@ -1,7 +1,7 @@
-import os
 import csv
-import platform
 import json
+import os
+import platform
 
 
 def clear_console():
@@ -11,7 +11,7 @@ def clear_console():
         os.system("clear")
 
 
-# Saves data to a json file. you can easily switch it to generate a text file or csv according to your needs.
+# Legacy CLI exports; the Django importer provides strict snapshot validation.
 def save(data, filename):
     os.makedirs("output", exist_ok=True)
     file_path = os.path.join("output", filename)
@@ -30,10 +30,10 @@ def save(data, filename):
 
 def get_offices(filename):
     offices = set()
-    with open(filename, "r") as file:
+    with open(filename) as file:
         doc = csv.reader(file)
         for row in doc:
-            if row[2] != "OfficeName":
+            if row[3] != "Office Name":
                 offices.add((row[7], row[3]))
 
     output = list(sorted(offices))
@@ -42,7 +42,7 @@ def get_offices(filename):
 
 def get_states(filename):
     states = set()
-    with open(filename, "r") as file:
+    with open(filename) as file:
         doc = csv.reader(file)
         for row in doc:
             if row[8] != "StateName":
@@ -54,7 +54,7 @@ def get_states(filename):
 
 def get_districts(filename):
     districts = set()
-    with open(filename, "r") as file:
+    with open(filename) as file:
         doc = csv.reader(file)
         for row in doc:
             if row[7] != "District":
@@ -65,7 +65,7 @@ def get_districts(filename):
 
 def get_areas(filename):
     areas = set()
-    with open(filename, "r") as file:
+    with open(filename) as file:
         doc = csv.reader(file)
         for row in doc:
             if row[4] != "Pincode":

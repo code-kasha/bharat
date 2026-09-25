@@ -1,17 +1,30 @@
-[tool.poetry]
+[project]
 name = "bharat"
-version = "0.1.0"
-description = "Reusable tools to generate json from the postal location dataset of India."
-authors = ["Akash Damle"]
-license = "MIT"
-readme = "README.md"
+version = "0.2.0"
+description = "An Indian postal directory API with reproducible dataset imports."
+requires-python = ">=3.12"
+dependencies = [
+  "django>=5.2,<5.3", "djangorestframework>=3.16,<4",
+  "drf-spectacular>=0.28,<1", "dj-database-url>=2.3,<4",
+  "psycopg[binary]>=3.2,<4", "gunicorn>=23; sys_platform != 'win32'",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-bharat = { git = "https://github.com/code-kasha/bharat.git", branch = "main" }
+[dependency-groups]
+dev = ["ruff>=0.11", "pytest>=8", "pytest-django>=4.10"]
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
 
 
