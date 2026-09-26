@@ -2,7 +2,7 @@
 
 An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from.
 
-**Status:** API milestone. The repository ships `db.sqlite3` with 155,599 offices from the project's original 2023 snapshot, whose upstream origin and date are unverified; it has no coordinates and is not current. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. No hosted deployment exists yet. A PIN may map to multiple offices; this service does not verify that a street address is deliverable.
+**Status:** API milestone. The repository ships `db.sqlite3` with the verified Bharat directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates, and its source date is not recorded. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. No hosted deployment exists yet. A PIN may map to multiple offices; this service does not verify that a street address is deliverable.
 
 ## Quick start
 
@@ -160,15 +160,10 @@ From the repository root, after Docker's engine is ready:
 
 ```powershell
 docker build -t bharat:local .
-docker volume create bharat-data
-docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat:local
-docker exec bharat-demo /app/.venv/bin/python manage.py migrate --noinput
-docker exec -e DATA_GOV_IN_API_KEY=$env:DATA_GOV_IN_API_KEY bharat-demo /app/.venv/bin/python manage.py fetch_postal_data
+docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat:local
 ```
 
-The database lives in the `bharat-data` volume, separate from your development `db.sqlite3`. The image does not include the bundled database, so the container starts empty until you fetch.
-
-Check the running API:
+The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. Check it:
 
 ```powershell
 Invoke-RestMethod http://127.0.0.1:18000/health/
@@ -176,34 +171,34 @@ Invoke-RestMethod http://127.0.0.1:18000/api/v1/dataset/
 Invoke-RestMethod http://127.0.0.1:18000/api/v1/pincodes/110001/
 ```
 
-The health response should report `ok`, and the dataset response shows the fetched source date. Open [container API documentation](http://127.0.0.1:18000/api/docs/) to explore the endpoints.
+The health response should report `ok`, the dataset response should report `row_count: 155599`, and PIN 110001 should return 23 offices. Open [container API documentation](http://127.0.0.1:18000/api/docs/) to explore the endpoints. When finished, run `docker stop bharat-demo`; `--rm` removes the container.
 
-When finished, run `docker stop bharat-demo`. The container is removed, but the volume keeps the data for the next run. Remove the data with `docker volume rm bharat-data`.
+Each new container starts from the bundled database. To keep data you fetch inside the container, add a named volume. On first use, Docker seeds an empty named volume with the bundled database:
 
-Docker Desktop 4.91.0 (Engine 29.8.0) on WSL 2.7.14 was verified on 26 September 2026 with the earlier CSV-based image. The fetch-based flow above has not yet been run end to end against the live API.
+```powershell
+docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat:local
+docker exec -e DATA_GOV_IN_API_KEY=$env:DATA_GOV_IN_API_KEY bharat-demo /app/.venv/bin/python manage.py fetch_postal_data
+```
+
+An existing volume keeps its own data and is not updated when you rebuild the image. Remove it with `docker volume rm bharat-data` to go back to the bundled database. Run `docker exec` from PowerShell or cmd; Git Bash rewrites `/app/...` paths unless you set `MSYS_NO_PATHCONV=1`.
+
+Verified on 26 September 2026 with Docker Desktop (Engine 29.8.0, Compose 5.5.1) on WSL 2.7.14. The image build, startup migrations, health, dataset, PIN lookup, district filter, search, documentation, write rejection (405), non-root user and named-volume seeding all passed. These are tested versions, not minimum requirements.
 
 ## CI and release delivery
 
 GitHub Actions installs the frozen lockfile, checks formatting/lint, runs tests, validates migrations/OpenAPI and builds the container. A `v*` Git tag publishes a versioned image to `ghcr.io/<owner>/<repository>` only after these checks pass. CI does not contact data.gov.in. No image has been published yet.
 
-The Docker image uses Gunicorn and an unprivileged user, and stores the SQLite database in the `/data` volume. Build with `docker build -t bharat:local .`.
+The Docker image uses Gunicorn and an unprivileged user, and stores the SQLite database in `/data`. Build with `docker build -t bharat:local .`.
 
-For a hosted release:
-
-1. Provision a host with a persistent volume mounted at `/data` and TLS ingress; set the production environment variables above.
-2. Deploy the verified versioned image. Run a single container per volume, because SQLite must not be shared across hosts or network filesystems. Configure forwarding-header trust only for your actual proxy setup.
-3. Back up `/data/bharat.sqlite3`, then execute `/app/.venv/bin/python manage.py migrate --noinput` as a release task before routing traffic.
-4. Run `fetch_postal_data` with `DATA_GOV_IN_API_KEY` in the running container, and schedule it to keep the data current.
-5. Check `/health/`, dataset metadata and a known PIN lookup over HTTPS. Apply request limits at the ingress for a public demo.
-6. Retain the previous image digest and database backup. Roll back application code only when schema-compatible; otherwise restore the matching database backup.
-
-Hosting-specific automatic deployment is pending selection of the host and domain.
+Hosting is out of scope for now; the project is meant to run locally, with or without Docker. When hosting is needed, use one container with a persistent volume at `/data`: SQLite must not be shared across hosts or network filesystems. Also set `DJANGO_DEBUG=false`, a generated `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS`, put TLS ingress in front, and back up `/data/bharat.sqlite3` before migrations.
 
 ## Next milestones
 
-- Run the first live fetch and resolve any upstream conflicting records.
+- Run the first live fetch from data.gov.in once an API key is available.
 - Add a small accessible lookup interface with source/freshness labels.
 - Add versioned data exports and measure query/fetch performance on the full directory.
-- Connect the release image to the selected hosting platform and verify deployment rollback.
+- Choose a hosting platform when a public deployment is needed.
 
-The original manifest declared MIT, but no license file was present. Confirm the intended code license before publishing a license file. Data from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
+## License
+
+The code is released under the [MIT License](LICENSE). Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
