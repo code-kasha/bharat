@@ -103,6 +103,8 @@ This runs as the image's unprivileged user, so the restored file stays writable 
 
 **Verified** on 26 September 2026 with Docker Engine 29.3.1 and Caddy 2 in a Linux sandbox, using `localhost` and Caddy's local certificate in place of a domain: HTTP-to-HTTPS redirect, HSTS and security headers, health, the lookup page and search, the PIN API, API docs, the gzipped export with `304` on its ETag, `/source/` off, unknown hosts refused, and data and the secret key surviving a restart and a container replacement, plus the backup and rollback commands above. Not verified there: a real domain's public certificate, its renewal, and the server's firewall. (The sandbox needed a registry mirror and its proxy certificate to build; neither is part of the image.)
 
+Also **verified on Windows 11** with Docker Desktop (Engine 29.8.0) and Caddy 2 on 26 September 2026, following steps 1–4 with `localhost` and no workarounds (commands on one line in PowerShell): HTTP-to-HTTPS redirect (308), HSTS, health, the lookup page and a `110001` search (23 results), the dataset (155,599 offices, 3 listed more than once), API docs, the export (`post-offices-undated-959693b760df.json`, 42.9 MB) and its `304`, `/source/` off (404), unknown hosts refused (Caddy does not forward them; the app answers 400), data and the secret key surviving `docker restart app`, a backup that passes SQLite's integrity check, and the rollback restore leaving the database owned and writable by `appuser`.
+
 **Support window.** bharat-post-dir uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running bharat-post-dir publicly after that.
 
 ## Configuration
