@@ -2,13 +2,40 @@ import os
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from django.core.management.utils import get_random_secret_key
+
+
+def env_flag(name, default=False):
+    return os.environ.get(name, str(default)).lower() == "true"
+
+
+def env_list(name, default=""):
+    return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
+def load_secret_key(path):
+    """Create a random key on first run and reuse it, so production mode needs no setup."""
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    except FileExistsError:
+        return Path(path).read_text().strip()
+    except OSError as exc:
+        raise ImproperlyConfigured(f"Cannot create {path}; set DJANGO_SECRET_KEY instead.") from exc
+    key = get_random_secret_key()
+    with os.fdopen(descriptor, "w") as stream:
+        stream.write(key)
+    return key
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "development-only-do-not-deploy")
-if not DEBUG and SECRET_KEY == "development-only-do-not-deploy":
-    raise ImproperlyConfigured("Set DJANGO_SECRET_KEY when DJANGO_DEBUG=false.")
-ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
+# Production mode is the default; DJANGO_DEBUG=true is contributor mode.
+DEBUG = env_flag("DJANGO_DEBUG")
+DATABASE_PATH = Path(os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"))
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY") or load_secret_key(
+    DATABASE_PATH.parent / ".secret_key"
+)
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]")
+CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 INSTALLED_APPS = ["django.contrib.contenttypes", "rest_framework", "drf_spectacular", "postal"]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -19,7 +46,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = "config.urls"
 # The change-source page replaces the directory from an uploaded CSV without authentication,
 # so it is for local use: on by default only while DEBUG is on.
-ALLOW_SOURCE_CHANGE = os.environ.get("BHARAT_ALLOW_SOURCE_CHANGE", str(DEBUG)).lower() == "true"
+ALLOW_SOURCE_CHANGE = env_flag("BHARAT_ALLOW_SOURCE_CHANGE", DEBUG)
 SOURCE_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
 WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
@@ -32,7 +59,7 @@ TEMPLATES = [
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        "NAME": DATABASE_PATH,
         "OPTIONS": {
             # WAL lets API reads continue while an import writes; IMMEDIATE serializes writers.
             "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
@@ -61,9 +88,12 @@ SPECTACULAR_SETTINGS = {
 }
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
-SECURE_SSL_REDIRECT = not DEBUG
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+# HTTPS hardening is opt-in so production mode also works on http://localhost.
+HTTPS = env_flag("DJANGO_HTTPS")
+SECURE_SSL_REDIRECT = HTTPS
+SESSION_COOKIE_SECURE = HTTPS
+CSRF_COOKIE_SECURE = HTTPS
+SECURE_HSTS_SECONDS = 31536000 if HTTPS else 0
 # Enable only behind a proxy that strips client-supplied forwarding headers.
-if os.environ.get("TRUST_PROXY_HTTPS", "false").lower() == "true":
+if env_flag("TRUST_PROXY_HTTPS"):
     SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
