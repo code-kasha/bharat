@@ -83,7 +83,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Home page (light and dark), "Delhi" search results, phone view, change-source page, "Share this dataset" note, API docs.
    - Save under `docs/images/`, compress to about 200 KB or less each, with alt text. The README hero uses `<picture>` to follow the reader's light or dark theme.
    - Make a 1280×640 social preview image. The user uploads it in GitHub Settings → Social preview (there is no API for it).
-12. **README rewrite and `docs/`**
+12. **README rewrite and `docs/`** — DONE. README starts with the description (no name heading), then badges (CI, MIT, Python 3.13, Django 5.2 LTS), links, the hero, highlights and status, following the outline below. Long material is in `docs/api.md`, `datasets.md`, `deployment.md`, `docker-windows.md` and `performance.md`; all Markdown links and anchors checked. **Still to add after tasks 14–15:** latest-release and container-image badges, and the demo link with its end date.
    - No name heading (decided): the README starts directly with the description. Opening line (draft; the user may reword): "A helper that tells you which India Post offices sit behind a PIN code or place name, ready to drop into your own applications as a JSON API or a Docker image."
    - Right after it, a highlights list of what we built:
      - 155,599 offices bundled; works right after cloning.

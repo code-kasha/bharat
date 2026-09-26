@@ -46,4 +46,4 @@ uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py spectacular --validate --fail-on-warn --file schema.yml
 ```
 
-[`AGENTS.md`](AGENTS.md) lists the rules the code keeps, for example that a PIN may map to many offices, that imports are fully validated before anything changes, and that the lookup page costs one HTTP request. Tests use synthetic data and never reach the network.
+[`AGENTS.md`](AGENTS.md) lists the rules the code keeps, for example that a PIN may map to many offices, that imports are fully validated before anything changes, and that the lookup page costs one HTTP request. Tests use synthetic data and never reach the network. The 116 tests cover PIN lookup, filters, pagination and listings, provenance, truncated or malformed downloads, retries, duplicate merging and repeated offices, idempotence and rollback, the lookup page (one request, three queries, accessibility markup), the export, production-mode settings, CSV and JSON uploads in every shape, temporary uploads (isolation, expiry, caps, CSRF) and the share note.
