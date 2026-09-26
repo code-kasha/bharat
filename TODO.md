@@ -107,7 +107,7 @@ Pick up from here. Nothing below is started unless marked done.
      - Where this could go: ideas for whoever picks it up (monthly auto-refresh from data.gov.in with a data changelog, a static JSON API on GitHub Pages or a CDN, npm and PyPI lookup packages, a per-release data quality report, resolving the bundled data's origin and license).
      - Contributing, license and credit.
    - Move long material into `docs/`: `deployment.md`, `docker-windows.md`, `api.md`, `datasets.md`, `performance.md`.
-13. **Repository settings** (`gh repo edit`)
+13. **Repository settings** — DONE. Set by the user and verified through the GitHub API: description, 15 topics, wiki off, Discussions off, website empty (set in task 15). Social preview uploaded by the user (not visible through the API). PR template (dataset checklist) and issue template (may go unanswered) committed in `.github/`; they take effect once merged into `main`.
    - Description (draft): "Indian PIN code and post office directory: 155,599 offices, a one-request lookup page, JSON API and one-file export. Django + SQLite; bring your own dataset."
    - Topics: `india`, `pincode`, `pin-code`, `postal-code`, `post-office`, `india-post`, `open-data`, `government-data`, `dataset`, `rest-api`, `openapi`, `django`, `django-rest-framework`, `sqlite`, `python`.
    - Website: set in task 15 to the demo URL; cleared in task 16.
