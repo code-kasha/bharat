@@ -1,3 +1,5 @@
+import shlex
+
 from django import forms
 from django.conf import settings
 from django.core.paginator import Paginator
@@ -34,6 +36,8 @@ def _lookup(request, upload, using):
         "allow_source_change": settings.ALLOW_SOURCE_CHANGE,
         "updated": request.GET.get("updated") == "1",
     }
+    if context["updated"] and settings.SAVE_UPLOADS and upload is None and context["dataset"]:
+        context["share"] = share_details(context["dataset"])
     if not query:
         return render(request, "postal/lookup.html", context)
     if query.isdigit():
@@ -49,6 +53,43 @@ def _lookup(request, upload, using):
         return render(request, "postal/lookup.html", context, status=400)
     context["page"] = Paginator(offices, PAGE_SIZE).get_page(request.GET.get("page"))
     return render(request, "postal/lookup.html", context)
+
+
+def share_details(dataset):
+    """Git commands and a pull request description for sharing a saved dataset."""
+    if dataset.source_date:
+        when = f"Source date: {dataset.source_date:%Y-%m-%d}"
+    elif dataset.source_period:
+        when = f"Approximate source date: {dataset.source_period}"
+    else:
+        when = "Source date: not recorded"
+    branch = f"dataset-{dataset.checksum[:12]}"
+    commands = [f"git switch -c {branch}"]
+    bundled = settings.BASE_DIR / "db.sqlite3"
+    if settings.DATABASE_PATH.resolve() != bundled.resolve():
+        commands.append(f"cp {shlex.quote(str(settings.DATABASE_PATH))} db.sqlite3")
+    commands += [
+        "git add db.sqlite3",
+        f"git commit -m {shlex.quote(f'Update dataset: {dataset.source}')}",
+        f"git push -u origin {branch}",
+    ]
+    description = "\n".join(
+        [
+            "Updated dataset",
+            "",
+            f"- Source: {dataset.source}",
+            f"- {when}",
+            f"- Offices: {dataset.row_count}"
+            f" ({dataset.duplicate_count} exact repeated rows merged)",
+            f"- SHA256 of the imported data: {dataset.checksum}",
+            f"- Loaded: {dataset.imported_at:%Y-%m-%d}",
+        ]
+    )
+    return {
+        "commands": "\n".join(commands),
+        "description": description,
+        "repository": settings.REPOSITORY_URL,
+    }
 
 
 class SourceForm(forms.Form):

@@ -45,7 +45,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Store each upload in its own scratch SQLite file under a temp/data directory, keyed by a signed cookie. Expire and delete after a set time; cap the size.
    - The lookup page and search read from it; the source label shows the uploaded file's details. The API and export keep serving the default dataset.
    - "Back to the default dataset" button. Keep one request per page.
-3. **Saving uploads (`DJANGO_DEBUG=true`)**
+3. **Saving uploads (`DJANGO_DEBUG=true`)** — DONE (`release-v1`). The note is on `/?updated=1` after a saved upload; the repository URL is `REPOSITORY_URL` in settings (update it in task 10). `replace_dataset` now checkpoints the WAL so a committed `db.sqlite3` is complete.
    - Keep the current replace-`db.sqlite3` behaviour.
    - After success, show a "Share this dataset" note: git commands (branch, commit `db.sqlite3`), a link to open a PR on `code-kasha/bharat` **or publish your fork**, and a pre-filled description (source, date or period, office count, SHA256). Say plainly that the PR may not be reviewed.
    - Temporary uploads show a lighter note: run with `DJANGO_DEBUG=true` to save and share it.

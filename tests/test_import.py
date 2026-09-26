@@ -209,3 +209,13 @@ def test_transient_gateway_errors_are_retried():
     ):
         assert _get_json("https://example.invalid") == {"ok": 1}
     sleep.assert_called_once()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_replacement_checkpoints_the_write_ahead_log(records):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    with CaptureQueriesContext(connection) as queries:
+        replace_dataset(parse_records(records), source="fixture")
+    assert "PRAGMA wal_checkpoint(TRUNCATE)" in queries[-1]["sql"]

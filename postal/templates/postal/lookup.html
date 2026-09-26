@@ -7,10 +7,20 @@
 {% block content %}
   {% if updated and dataset %}
   {% if upload %}
-  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count }} offices. Only this browser sees it.</p>
+  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count }} offices. Only this browser sees it. To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
   {% else %}
   <p class="notice" role="status">Source updated: {{ dataset.row_count }} offices loaded.</p>
   {% endif %}
+  {% endif %}
+  {% if share %}
+  <section class="source" aria-labelledby="share-heading">
+    <h2 id="share-heading">Share this dataset</h2>
+    <p>The new directory is saved in your local <code>db.sqlite3</code>. If others could use it, please share it: commit the file on a branch, then either open a pull request on <a href="{{ share.repository }}">{{ share.repository }}</a> or publish your fork. Bharat is not actively maintained, so a pull request may not be reviewed; a published fork works just as well.</p>
+    <h3 style="font-size: 1rem; margin: 1rem 0 .25rem;" id="share-commands">Commands, from the repository folder</h3>
+    <pre class="table-wrap" tabindex="0" aria-labelledby="share-commands"><code>{{ share.commands }}</code></pre>
+    <h3 style="font-size: 1rem; margin: 1rem 0 .25rem;" id="share-description">Description for the pull request or your fork</h3>
+    <pre class="table-wrap" tabindex="0" aria-labelledby="share-description"><code>{{ share.description }}</code></pre>
+  </section>
   {% endif %}
   {% if upload_expired %}
   <p class="notice" role="status">Your temporary upload has expired or was removed, so this page shows the default dataset again.</p>

@@ -328,3 +328,43 @@ def test_change_source_page_explains_the_mode(client, temporary, settings):
     assert "Upload and use in this browser" in html and "DJANGO_DEBUG=true" in html
     settings.SAVE_UPLOADS = True
     assert "Upload and replace directory" in client.get("/source/").content.decode()
+
+
+def test_saved_upload_offers_to_share_the_dataset(client, directory, local):
+    upload(client, GOOD, source="Survey's; rm -rf /", source_date="2025-06-30")
+    html = client.get("/?updated=1").content.decode()
+    assert "Share this dataset" in html
+    assert 'href="https://github.com/code-kasha/bharat"' in html
+    assert "may not be reviewed" in html and "publish your fork" in html
+    from postal.models import Dataset
+
+    dataset = Dataset.objects.get()
+    branch = f"dataset-{dataset.checksum[:12]}"
+    assert f"git switch -c {branch}\ngit add db.sqlite3\n" in html
+    # The source is shell-quoted in the commit command (and HTML-escaped on the page).
+    assert (
+        "git commit -m &#x27;Update dataset: Survey&#x27;&quot;&#x27;&quot;&#x27;s; rm -rf /&#x27;"
+        in html
+    )
+    assert f"- SHA256 of the imported data: {dataset.checksum}" in html
+    assert "- Source date: 2025-06-30" in html
+    assert "- Offices: 2 (1 exact repeated rows merged)" in html
+    # Only right after saving.
+    assert "Share this dataset" not in client.get("/").content.decode()
+
+
+def test_share_note_copies_a_database_kept_elsewhere(client, directory, local, settings, tmp_path):
+    settings.DATABASE_PATH = tmp_path / "my data.sqlite3"
+    upload(client, GOOD)
+    html = client.get("/?updated=1").content.decode()
+    assert f"cp &#x27;{tmp_path}/my data.sqlite3&#x27; db.sqlite3\ngit add db.sqlite3" in html
+
+
+def test_temporary_upload_points_to_saving_instead_of_sharing(client, directory, temporary):
+    upload(client, GOOD)
+    html = client.get("/?updated=1").content.decode()
+    assert "Share this dataset" not in html
+    assert (
+        "To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code>"
+        in html
+    )

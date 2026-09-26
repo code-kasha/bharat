@@ -11,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from django.db import DEFAULT_DB_ALIAS, transaction
+from django.db import DEFAULT_DB_ALIAS, connections, transaction
 
 from postal.models import Dataset, PostOffice
 
@@ -211,4 +211,10 @@ def replace_dataset(parsed, *, source, source_period="", using=DEFAULT_DB_ALIAS)
         current.row_count = len(parsed.offices)
         current.duplicate_count = parsed.duplicates
         current.save(using=using)
-        return True
+    # Fold the write-ahead log into the database file, so the file alone (for example a
+    # committed db.sqlite3) holds the new directory. SQLite cannot do this mid-transaction.
+    connection = connections[using]
+    if not connection.in_atomic_block:
+        with connection.cursor() as cursor:
+            cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+    return True
