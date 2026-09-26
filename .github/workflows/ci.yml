@@ -93,3 +93,35 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "bharat-post-dir $GITHUB_REF_NAME" --notes-file notes.md
+  deploy:
+    # The hosted demo: redeploy it after the checks pass on main. Skipped until the repository
+    # variable DEMO_URL and the secret DEPLOY_HOOK_URL are set (see docs/deployment.md).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEMO_URL != ''
+    needs: checks
+    runs-on: ubuntu-24.04
+    environment:
+      name: production
+      url: ${{ vars.DEMO_URL }}
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Trigger the deploy
+        env:
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        run: curl -fsS -X POST "$DEPLOY_HOOK_URL" > /dev/null
+      - name: Wait until the demo serves this commit
+        env:
+          DEMO_URL: ${{ vars.DEMO_URL }}
+        shell: bash
+        run: |
+          for attempt in $(seq 1 60); do
+            if body=$(curl -fsS --max-time 30 "$DEMO_URL/health/") &&
+              python3 -c 'import json, sys; sys.exit(json.loads(sys.argv[1]).get("revision") != sys.argv[2])' "$body" "$GITHUB_SHA"; then
+              echo "Live: $body"
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::$DEMO_URL did not report revision $GITHUB_SHA within 15 minutes"
+          exit 1

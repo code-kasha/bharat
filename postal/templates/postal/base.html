@@ -16,6 +16,7 @@
   a { color: var(--link); }
   :focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
   .skip { position: absolute; left: -999px; }
+  .demo { margin: 0; padding: .5rem 1rem; background: var(--panel); border-bottom: 1px solid var(--line); text-align: center; }
   .skip:focus { left: 1rem; top: 1rem; background: var(--bg); padding: .5rem; }
   .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   main, header, footer { max-width: 64rem; margin: 0 auto; padding: 1rem; }
@@ -50,6 +51,9 @@
 </head>
 <body>
 <a class="skip" href="#main">Skip to main content</a>
+{% if demo_until %}
+<p class="demo" role="note">This is a demo that runs until <time datetime="{{ demo_until|date:'Y-m-d' }}">{{ demo_until|date:"j F Y" }}</time>. After that, run it yourself with Docker or Python: <a href="{{ repository_url }}">{{ repository_url }}</a>.</p>
+{% endif %}
 <header>
   <h1>{% block heading %}bharat-post-dir{% endblock %}</h1>
   {% block intro %}{% endblock %}

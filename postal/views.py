@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import connection
 from django.db.models import Count
 from django.http import JsonResponse
@@ -20,7 +21,9 @@ from postal.serializers import (
 def health(request):
     with connection.cursor() as cursor:
         cursor.execute("SELECT 1")
-    return JsonResponse({"status": "ok"})
+    return JsonResponse(
+        {"status": "ok", "version": settings.VERSION, "revision": settings.REVISION}
+    )
 
 
 @extend_schema(parameters=[OfficeQuerySerializer])

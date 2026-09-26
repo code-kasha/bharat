@@ -17,7 +17,7 @@ All data endpoints are read-only and public, with no key or account. Writes happ
 | `GET /api/v1/export/` | The whole directory as one JSON file in one request; see [below](#the-whole-directory-in-one-download) |
 | `GET /api/schema/` | Generated OpenAPI schema |
 | `GET /api/docs/` | Interactive Swagger documentation (Swagger UI 5.33.0, loaded from jsDelivr) |
-| `GET /health/` | Process and database connectivity; does not assert dataset freshness |
+| `GET /health/` | Process and database connectivity, with the running `version` and `revision` (commit); does not assert dataset freshness |
 
 ```sh
 curl http://127.0.0.1:8000/api/v1/pincodes/110001/
