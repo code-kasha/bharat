@@ -27,7 +27,7 @@
       <li>A header row with these columns, in any order: <code>Circle Name</code>, <code>Region Name</code>, <code>Division Name</code>, <code>Office Name</code>, <code>Pincode</code>, <code>OfficeType</code>, <code>Delivery</code>, <code>District</code>, <code>StateName</code>. Spaces, underscores and letter case in column names are ignored.</li>
       <li>Optional <code>Latitude</code> and <code>Longitude</code> columns. Other columns are ignored.</li>
       <li>Six-digit PINs that do not start with 0. Every field except Region Name must be filled in.</li>
-      <li>No office listed twice with different details (same PIN, state, district and office name). Exact repeats are merged.</li>
+      <li>Exact repeated rows are merged. An office listed more than once with different details (same PIN, state, district and office name) is kept in every version and counted.</li>
       <li>UTF-8 text (in Excel, “CSV UTF-8”), at most {{ max_mb }} MB.</li>
     </ul>
   </details>

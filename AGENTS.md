@@ -21,7 +21,8 @@ Bharat is a read-only Django REST Framework postal directory. Use Python 3.13 an
   files are stored in the repository.
 - A PIN is a six-character string and can map to many offices. Do not make PIN unique.
 - Fully validate imports before mutation; failures must preserve the current data and metadata.
-- Collapse exact duplicate rows, reject conflicting office identities, and report counts.
+- Collapse exact duplicate rows, keep every differing row for a repeated office identity (government
+  data can list an office twice legitimately), and report both counts.
 - Record source, optional source date, import timestamp and SHA256. Never invent data freshness.
 - Tests use synthetic API-shaped fixtures and must never reach the network.
 - Never commit API keys. Only the bundled `db.sqlite3` is tracked: the maintainer-verified 2023

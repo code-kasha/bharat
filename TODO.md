@@ -49,7 +49,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Keep the current replace-`db.sqlite3` behaviour.
    - After success, show a "Share this dataset" note: git commands (branch, commit `db.sqlite3`), a link to open a PR on `code-kasha/bharat` **or publish your fork**, and a pre-filled description (source, date or period, office count, SHA256). Say plainly that the PR may not be reviewed.
    - Temporary uploads show a lighter note: run with `DJANGO_DEBUG=true` to save and share it.
-4. **Keep conflicting duplicates**
+4. **Keep conflicting duplicates** — DONE (`release-v1`). `Dataset.repeated_identity_count` (generated migration 0005, data migration 0006 fills it from existing rows). Bundled `db.sqlite3` migrated: office rows byte-identical, count = 3. Verified by exporting the bundled 155,599 rows to CSV and uploading them in contributor mode: all loaded, 3 repeated offices kept.
    - Importer: stop rejecting conflicting identities; count offices listed more than once (e.g. `repeated_identity_count` on `Dataset`, via a generated migration) and show it on the page, the API and the upload result.
    - Update tests that expect rejection. Re-upload the original 155,599-row file to confirm it now loads (it has 3 such offices).
    - Update the AGENTS.md invariant ("reject conflicting office identities").

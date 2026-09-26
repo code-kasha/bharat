@@ -81,6 +81,8 @@ def share_details(dataset):
             f"- {when}",
             f"- Offices: {dataset.row_count}"
             f" ({dataset.duplicate_count} exact repeated rows merged)",
+            "- Offices listed more than once with different details (kept):"
+            f" {dataset.repeated_identity_count}",
             f"- SHA256 of the imported data: {dataset.checksum}",
             f"- Loaded: {dataset.imported_at:%Y-%m-%d}",
         ]

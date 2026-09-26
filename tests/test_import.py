@@ -124,9 +124,20 @@ def test_field_names_are_normalized():
     assert parse_records([record]).offices[0]["office_name"] == "Office A"
 
 
-def test_conflicting_duplicates_are_rejected():
-    with pytest.raises(ImportFailure, match="conflicting"):
-        parse_records([office(), office(delivery="Non Delivery")])
+def test_repeated_office_identities_are_kept_and_counted():
+    records = [
+        office(),
+        office(delivery="Non Delivery"),
+        office(name="OFFICE A", officetype="SO"),  # identity is case-insensitive
+        office(),  # exact repeat of the first row: merged
+        office("Office B"),
+    ]
+    parsed = parse_records(records)
+    assert [row["delivery"] for row in parsed.offices[:2]] == ["Delivery", "Non Delivery"]
+    assert (len(parsed.offices), parsed.duplicates, parsed.repeated_identities) == (4, 1, 1)
+    replace_dataset(parsed, source="fixture")
+    dataset = Dataset.objects.get()
+    assert (dataset.row_count, dataset.repeated_identity_count) == (4, 1)
 
 
 @pytest.mark.parametrize("pin", ["012345", "12345", "1234567", "abcdef", "४००००१", None])
@@ -219,3 +230,17 @@ def test_replacement_checkpoints_the_write_ahead_log(records):
     with CaptureQueriesContext(connection) as queries:
         replace_dataset(parse_records(records), source="fixture")
     assert "PRAGMA wal_checkpoint(TRUNCATE)" in queries[-1]["sql"]
+
+
+def test_migration_counts_repeated_offices_in_an_existing_directory(records):
+    from importlib import import_module
+    from types import SimpleNamespace
+
+    from django.apps import apps
+    from django.db import connection
+
+    replace_dataset(parse_records(records + [office(delivery="Non Delivery")]), source="old")
+    Dataset.objects.update(repeated_identity_count=0)
+    migration = import_module("postal.migrations.0006_count_repeated_identities")
+    migration.count_repeated_identities(apps, SimpleNamespace(connection=connection))
+    assert Dataset.objects.get().repeated_identity_count == 1

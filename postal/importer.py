@@ -43,6 +43,8 @@ class ParsedDataset:
     offices: list
     duplicates: int
     source_date: date | None = None
+    # Offices (same PIN, state, district and name) listed more than once with different details.
+    repeated_identities: int = 0
 
 
 @dataclass
@@ -110,8 +112,13 @@ def _coordinate(value, limit):
 
 
 def parse_records(records, *, source_date=None, position="record {}".format):
-    """Validate the entire snapshot before changing the active directory."""
-    offices = {}
+    """Validate the entire snapshot before changing the active directory.
+
+    Exact repeated rows are merged. Differing rows for the same office identity are all kept:
+    government data can list an office twice legitimately, so they are counted, not rejected.
+    """
+    offices = []
+    variants = {}
     duplicates = 0
     errors = []
     rejected = 0
@@ -136,18 +143,17 @@ def parse_records(records, *, source_date=None, position="record {}".format):
         key = tuple(
             values[field].casefold() for field in ("pincode", "state", "district", "office_name")
         )
-        if not problem and key in offices:
-            if offices[key] != values:
-                problem = "conflicting records for the same office identity"
-            else:
-                duplicates += 1
-                continue
         if problem:
             rejected += 1
             if len(errors) < 10:
                 errors.append(f"{position(number)}: {problem}")
-        else:
-            offices[key] = values
+            continue
+        seen = variants.setdefault(key, [])
+        if values in seen:
+            duplicates += 1
+            continue
+        seen.append(values)
+        offices.append(values)
     if rejected:
         raise ImportFailure(f"Rejected {rejected} record(s); no data changed. " + "; ".join(errors))
     if not offices:
@@ -155,9 +161,10 @@ def parse_records(records, *, source_date=None, position="record {}".format):
     canonical = json.dumps(records, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return ParsedDataset(
         hashlib.sha256(canonical.encode()).hexdigest(),
-        list(offices.values()),
+        offices,
         duplicates,
         source_date,
+        sum(len(seen) > 1 for seen in variants.values()),
     )
 
 
@@ -210,6 +217,7 @@ def replace_dataset(parsed, *, source, source_period="", using=DEFAULT_DB_ALIAS)
         current.checksum = parsed.checksum
         current.row_count = len(parsed.offices)
         current.duplicate_count = parsed.duplicates
+        current.repeated_identity_count = parsed.repeated_identities
         current.save(using=using)
     # Fold the write-ahead log into the database file, so the file alone (for example a
     # committed db.sqlite3) holds the new directory. SQLite cannot do this mid-transaction.

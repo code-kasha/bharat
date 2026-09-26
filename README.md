@@ -53,7 +53,7 @@ Bharat is meant to run locally, so you can replace the directory with your own C
 
 The CSV uses the directory's column layout: `Circle Name`, `Region Name`, `Division Name`, `Office Name`, `Pincode`, `OfficeType`, `Delivery`, `District` and `StateName`, in any order. Spaces, underscores and case in column names are ignored. `Latitude` and `Longitude` are optional; other columns are ignored. The file must be UTF-8 (Excel's "CSV UTF-8") and at most 100 MB.
 
-The upload goes through the same importer as `fetch_postal_data`. The whole file is validated before anything is written; any invalid row rejects the file, the page lists up to 10 problems by CSV line number, and nothing is kept. Exact repeated rows are merged; an office listed twice with different details (same PIN, state, district and office name) is rejected.
+The upload goes through the same importer as `fetch_postal_data`. The whole file is validated before anything is written; any invalid row rejects the file, the page lists up to 10 problems by CSV line number, and nothing is kept. Exact repeated rows are merged. An office listed more than once with different details (same PIN, state, district and office name) is kept in every version, because government data can list an office twice legitimately; the page, `/api/v1/dataset/` (`repeated_identity_count`) and the upload result say how many there are.
 
 What happens to a valid file depends on the mode:
 
@@ -130,11 +130,11 @@ uv run python manage.py fetch_postal_data
 
 The command reads the key only from `DATA_GOV_IN_API_KEY`, never from a command-line argument, so it does not appear in process listings. It pages through the API (`--page-size`, default 1000) and retries transient gateway errors. It refuses a download that is shorter than the total the API reports. `--resource` selects another OGD resource ID with the same fields.
 
-The importer validates the complete download before writing. It keeps six-digit PINs as strings, collapses identical records, rejects conflicting identities and refuses empty snapshots. Office identity is PIN + state + district + office name (case-insensitive during import). A failed fetch leaves the current directory untouched. A successful fetch replaces the entire directory and metadata in one transaction. Repeating a fetch that returns identical data is a no-op. Database-generated IDs are deliberately not exposed as stable public identifiers. The database itself does not enforce office uniqueness, so a database built from another snapshot may hold repeated identities; the fetch still rejects them.
+The importer validates the complete download before writing. It keeps six-digit PINs as strings, collapses identical records, keeps and counts offices listed more than once with different details, and refuses empty snapshots. Office identity is PIN + state + district + office name (case-insensitive during import). A failed fetch leaves the current directory untouched. A successful fetch replaces the entire directory and metadata in one transaction. Repeating a fetch that returns identical data is a no-op. Database-generated IDs are deliberately not exposed as stable public identifiers. Neither the database nor the importer enforces office uniqueness: the bundled snapshot lists 3 offices twice with different details, and a fetch or upload keeps such rows too.
 
 Provenance is recorded from the source itself. The source is the API resource URL (never the key). The source date is the API's reported `updated_date` and is left empty if the API does not report one. The SHA256 covers the downloaded records.
 
-Upstream updates the directory roughly monthly. Refresh by re-running the command, for example from a scheduled job. If upstream publishes conflicting records, the fetch fails and lists them, and the previous data stays in service.
+Upstream updates the directory roughly monthly. Refresh by re-running the command, for example from a scheduled job. If upstream lists an office more than once with different details, every version is kept and the command reports how many.
 
 ## Architecture
 
@@ -196,7 +196,7 @@ uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py spectacular --validate --fail-on-warn --file schema.yml
 ```
 
-Tests cover one-to-many PIN lookup, input validation, filters, pagination, state/district listings, read-only routes, provenance, API pagination, truncated or malformed downloads, retries, duplicate/conflict handling, idempotence, dry runs and rollback. They never contact data.gov.in.
+Tests cover one-to-many PIN lookup, input validation, filters, pagination, state/district listings, read-only routes, provenance, API pagination, truncated or malformed downloads, retries, duplicate merging, repeated offices kept and counted, idempotence, dry runs and rollback. They never contact data.gov.in.
 
 ## Run with Docker
 

@@ -12,6 +12,8 @@ class Dataset(models.Model):
     imported_at = models.DateTimeField(auto_now=True)
     row_count = models.PositiveIntegerField()
     duplicate_count = models.PositiveIntegerField(default=0)
+    # Offices listed more than once with different details; all their rows are kept.
+    repeated_identity_count = models.PositiveIntegerField(default=0)
 
 
 class PostOffice(models.Model):

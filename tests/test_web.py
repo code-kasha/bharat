@@ -148,11 +148,6 @@ def test_exact_source_date_is_shown(client, local):
         ([], {}, "no offices"),
         (GOOD, {"source": ""}, "Say where the data came from"),
         (GOOD, {"source_date": "2025-01-01", "source_period": "2024"}, "not both"),
-        (
-            ["C,R,D,Same,560001,HO,Delivery,X,Y", "C,R,D,Same,560001,SO,Delivery,X,Y"],
-            {},
-            "conflicting",
-        ),
     ],
 )
 def test_bad_upload_changes_nothing(client, directory, local, rows, fields, message):
@@ -368,3 +363,34 @@ def test_temporary_upload_points_to_saving_instead_of_sharing(client, directory,
         "To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code>"
         in html
     )
+
+
+REPEATED = GOOD + ["C,R,D,New Office,560001,SO,Non Delivery,Bengaluru,Karnataka"]
+
+
+@pytest.mark.parametrize("mode", ["local", "temporary"])
+def test_repeated_offices_are_kept_and_reported(client, directory, mode, request):
+    request.getfixturevalue(mode)
+    assert upload(client, REPEATED).status_code == 302
+    html = client.get("/?updated=1").content.decode()
+    assert "3 offices" in html
+    assert (
+        "1 office is listed more than once with different details; every version was kept." in html
+    )
+    assert "<dt>Listed more than once</dt>" in html
+    results = client.get("/", {"q": "560001"}).content.decode()
+    assert results.count('<th scope="row">New Office</th>') == 2
+
+
+def test_repeated_offices_are_in_the_api_and_share_note(client, directory, local):
+    upload(client, REPEATED)
+    assert client.get("/api/v1/dataset/").json()["repeated_identity_count"] == 1
+    assert client.get("/api/v1/pincodes/560001/").json()["count"] == 2
+    html = client.get("/?updated=1").content.decode()
+    assert "- Offices listed more than once with different details (kept): 1" in html
+
+
+def test_single_listings_do_not_mention_repeats(client, directory, local):
+    upload(client, GOOD)
+    html = client.get("/?updated=1").content.decode()
+    assert "every version was kept" not in html and "<dt>Listed more than once</dt>" not in html

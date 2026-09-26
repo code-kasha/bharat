@@ -7,9 +7,9 @@
 {% block content %}
   {% if updated and dataset %}
   {% if upload %}
-  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count }} offices. Only this browser sees it. To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
+  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count }} offices. Only this browser sees it.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %} To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
   {% else %}
-  <p class="notice" role="status">Source updated: {{ dataset.row_count }} offices loaded.</p>
+  <p class="notice" role="status">Source updated: {{ dataset.row_count }} offices loaded.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %}</p>
   {% endif %}
   {% endif %}
   {% if share %}
@@ -38,6 +38,10 @@
       <dd><time datetime="{{ dataset.imported_at|date:'c' }}">{{ dataset.imported_at|date:"j F Y" }}</time></dd>
       <dt>Offices</dt>
       <dd>{{ dataset.row_count }}</dd>
+      {% if dataset.repeated_identity_count %}
+      <dt>Listed more than once</dt>
+      <dd>{{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize }} (same PIN, state, district and name, with different details). Every version is shown.</dd>
+      {% endif %}
       {% if upload %}
       <dt>Kept until</dt>
       <dd><time datetime="{{ upload.expires|date:'c' }}">{{ upload.expires|date:"j F Y, H:i e" }}</time></dd>
