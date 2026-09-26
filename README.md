@@ -345,7 +345,16 @@ Back up before every update, because migrations run automatically when the conta
 
 **Updates.** Build or pull the new image, then replace the container with the same volume and settings: `docker stop bharat && docker rm bharat`, then the `docker run` from step 2. The volume keeps its data; a rebuilt image does not replace an existing volume's directory. To switch to the directory bundled in a new image, remove the volume (`docker volume rm bharat-data`) before starting the container.
 
-**Rollback.** Migrations only move forward, so roll back the image and the data together: stop and remove the container, restore the backup into the volume (for example with `docker run --rm -v bharat-data:/data -v "$PWD":/backup alpine cp /backup/bharat-backup.sqlite3 /data/bharat.sqlite3`, after deleting any `/data/bharat.sqlite3-wal` and `-shm` files), then start the previous image tag with the step 2 command.
+**Rollback.** Migrations only move forward, so roll back the image and the data together. Stop and remove the container, then restore the backup into the volume from the folder that holds `bharat-backup.sqlite3`:
+
+```sh
+docker run --rm -v bharat-data:/data -v "$PWD":/backup --entrypoint sh bharat:local \
+  -c "rm -f /data/bharat.sqlite3 /data/bharat.sqlite3-wal /data/bharat.sqlite3-shm && cp /backup/bharat-backup.sqlite3 /data/bharat.sqlite3"
+```
+
+This runs as the image's unprivileged user, so the restored file stays writable by Bharat; a restore done as root (for example with a plain `alpine` container) leaves a database the app can read but not update. Then start the previous image tag with the step 2 command.
+
+**Verified** on 26 September 2026 with Docker Engine 29.3.1 and Caddy 2 in a Linux sandbox, using `localhost` and Caddy's local certificate in place of a domain: HTTP-to-HTTPS redirect, HSTS and security headers, health, the lookup page and search, the PIN API, API docs, the gzipped export with `304` on its ETag, `/source/` off, unknown hosts refused, and data and the secret key surviving a restart and a container replacement, plus the backup and rollback commands above. Not verified there: a real domain's public certificate, its renewal, and the server's firewall. (The sandbox needed a registry mirror and its proxy certificate to build; neither is part of the image.)
 
 **Support window.** Bharat uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running Bharat publicly after that.
 
