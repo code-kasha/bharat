@@ -94,25 +94,42 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --title "bharat-post-dir $GITHUB_REF_NAME" --notes-file notes.md
   deploy:
-    # The hosted demo: redeploy it after the checks pass on main. Skipped until the repository
-    # variable DEMO_URL and the secret DEPLOY_HOOK_URL are set (see docs/deployment.md).
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.DEMO_URL != ''
+    # The hosted demo: redeploy it after the checks pass on main. It needs DEMO_URL (a repository or
+    # production-environment variable, or a secret) and the DEPLOY_HOOK_URL secret; without them the
+    # job only notes that the demo is not set up (see docs/deployment.md).
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: checks
     runs-on: ubuntu-24.04
     environment:
       name: production
-      url: ${{ vars.DEMO_URL }}
+      url: ${{ steps.config.outputs.url }}
     concurrency:
       group: production
       cancel-in-progress: false
     steps:
+      - name: Check the demo is set up
+        id: config
+        env:
+          DEMO_URL: ${{ vars.DEMO_URL || secrets.DEMO_URL }}
+          DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
+        shell: bash
+        run: |
+          if [ -z "$DEMO_URL" ] || [ -z "$DEPLOY_HOOK_URL" ]; then
+            echo "::notice::No demo to deploy: set DEMO_URL and the DEPLOY_HOOK_URL secret to enable it."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "url=${DEMO_URL%/}" >> "$GITHUB_OUTPUT"
+          fi
       - name: Trigger the deploy
+        if: steps.config.outputs.enabled == 'true'
         env:
           DEPLOY_HOOK_URL: ${{ secrets.DEPLOY_HOOK_URL }}
         run: curl -fsS -X POST "$DEPLOY_HOOK_URL" > /dev/null
       - name: Wait until the demo serves this commit
+        if: steps.config.outputs.enabled == 'true'
         env:
-          DEMO_URL: ${{ vars.DEMO_URL }}
+          DEMO_URL: ${{ steps.config.outputs.url }}
         shell: bash
         run: |
           for attempt in $(seq 1 60); do
