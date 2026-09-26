@@ -24,6 +24,8 @@ To load current official data instead, get a free data.gov.in API key (sign in a
 
 The public sample key is capped at 10 records, so it cannot load the directory.
 
+> **Known blocker (checked 26 September 2026):** data.gov.in's sign-up form does not display its captcha, so new accounts cannot be created and no API key can be issued. Until the portal is fixed, the fetch cannot run and the bundled 2023 snapshot is the only data available. An existing key should still work, but no live fetch has been run yet.
+
 Open [API documentation](http://127.0.0.1:8000/api/docs/) or [a PIN lookup](http://127.0.0.1:8000/api/v1/pincodes/110001/).
 
 ## API
@@ -206,7 +208,7 @@ Hosting is out of scope for now; the project is meant to run locally, with or wi
 
 ## Next milestones
 
-- Run the first live fetch from data.gov.in once an API key is available.
+- Run the first live fetch from data.gov.in once an API key is available (blocked by the broken sign-up captcha; see [Quick start](#quick-start)).
 - Add a small accessible lookup interface with source/freshness labels.
 - Add versioned data exports and measure query/fetch performance on the full directory.
 - Choose a hosting platform when a public deployment is needed.
