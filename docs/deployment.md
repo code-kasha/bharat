@@ -127,7 +127,7 @@ To set up the same thing (for a fork, for example):
    - `DJANGO_CSRF_TRUSTED_ORIGINS=https://your-service.onrender.com`
    - `SITE_DEMO_UNTIL=2026-12-26`, which shows the end date on every page (leave it out for a permanent site)
 3. Set the health check path to `/health/`, and turn **Auto-Deploy** off so only CI deploys, after the checks.
-4. Copy the service's **Deploy Hook** URL. In the GitHub repository's **Settings → Secrets and variables → Actions**, add it as the secret `DEPLOY_HOOK_URL`, and add the variable `DEMO_URL` with the service's `https://…onrender.com` address. The `deploy` job is skipped until `DEMO_URL` is set.
+4. Copy the service's **Deploy Hook** URL. In the GitHub repository's **Settings → Secrets and variables → Actions**, add it as the secret `DEPLOY_HOOK_URL`, and add `DEMO_URL` with the service's `https://…onrender.com` address, as a repository variable, a variable of the `production` environment, or a secret. Until both are set, the `deploy` job only notes that there is no demo to deploy.
 
 Render terminates HTTPS in front of the app. `DJANGO_HTTPS` and `TRUST_PROXY_HTTPS` stay off there: this project has not verified that Render's proxy overwrites `X-Forwarded-Proto`, and the demo has no forms or sessions that need secure cookies.
 
