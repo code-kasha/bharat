@@ -468,3 +468,18 @@ def test_counts_are_grouped_for_reading(client, directory):
 def test_data_panel_stacks_on_narrow_screens(client, directory):
     html = client.get("/").content.decode()
     assert "@media (max-width: 40rem) { .source dl { grid-template-columns: 1fr;" in html
+
+
+def test_demo_notice_shows_its_end_date_on_every_page(client, directory, settings):
+    from datetime import date
+
+    assert "This is a demo" not in client.get("/").content.decode()
+    settings.DEMO_UNTIL = date(2026, 12, 26)
+    for page in ("/", "/?q=110001"):
+        html = client.get(page).content.decode()
+        notice = (
+            'This is a demo that runs until <time datetime="2026-12-26">26 December 2026</time>'
+        )
+        assert f'role="note">{notice}' in html
+        assert 'href="https://github.com/code-kasha/bharat-post-dir"' in html
+        assert not re.search(r"<script|<img|<link[^>]+stylesheet|@import|url\(", html)

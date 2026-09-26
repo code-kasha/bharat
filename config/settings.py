@@ -1,5 +1,6 @@
 import os
 import tomllib
+from datetime import date
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -12,6 +13,16 @@ def env_flag(name, default=False):
 
 def env_list(name, default=""):
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
+
+
+def env_date(name):
+    value = os.environ.get(name, "").strip()
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise ImproperlyConfigured(f"{name} must be a date like 2026-12-26.") from exc
 
 
 def load_secret_key(path):
@@ -62,7 +73,7 @@ TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "APP_DIRS": True,
-        "OPTIONS": {"context_processors": []},
+        "OPTIONS": {"context_processors": ["postal.context.site"]},
     }
 ]
 DATABASES = {
@@ -89,6 +100,11 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
+# A hosted demo shows its end date on every page; unset everywhere else.
+DEMO_UNTIL = env_date("SITE_DEMO_UNTIL")
+# The commit being served, reported by /health/ so a deploy can confirm it is live. Render sets
+# RENDER_GIT_COMMIT; other hosts can set SITE_REVISION.
+REVISION = os.environ.get("SITE_REVISION") or os.environ.get("RENDER_GIT_COMMIT", "")
 # One version for the package and the API docs.
 VERSION = tomllib.loads((BASE_DIR / "pyproject.toml").read_text())["project"]["version"]
 SWAGGER_UI_VERSION = "5.33.0"

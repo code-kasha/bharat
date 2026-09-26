@@ -14,7 +14,7 @@ PRINT_SETTINGS = (
     "import json; from django.conf import settings as s; print(json.dumps({k: getattr(s, k) "
     "for k in ['DEBUG', 'SECURE_SSL_REDIRECT', 'SESSION_COOKIE_SECURE', 'CSRF_COOKIE_SECURE', "
     "'SECURE_HSTS_SECONDS', 'CSRF_TRUSTED_ORIGINS', 'ALLOW_SOURCE_CHANGE', 'SAVE_UPLOADS', "
-    "'SECRET_KEY']}))"
+    "'SECRET_KEY', 'REVISION']}))"
 )
 
 
@@ -80,3 +80,22 @@ def test_hosting_turns_change_source_off(tmp_path):
     assert loaded["ALLOW_SOURCE_CHANGE"] is False
     # The Docker image is for hosting, so it ships with change source off.
     assert "ENV SITE_ALLOW_SOURCE_CHANGE=false" in (ROOT / "Dockerfile").read_text()
+
+
+def test_demo_end_date_and_revision_come_from_the_environment(tmp_path):
+    loaded = settings_with(tmp_path, RENDER_GIT_COMMIT="f00d")
+    assert loaded["REVISION"] == "f00d"
+    assert (
+        settings_with(tmp_path, SITE_REVISION="beef", RENDER_GIT_COMMIT="f00d")["REVISION"]
+        == "beef"
+    )
+
+
+def test_malformed_demo_end_date_is_explained(tmp_path):
+    with pytest.raises(subprocess.CalledProcessError) as failure:
+        settings_with(tmp_path, SITE_DEMO_UNTIL="December")
+    assert "SITE_DEMO_UNTIL must be a date like 2026-12-26" in failure.value.stderr
+
+
+def test_the_image_listens_on_the_port_a_host_sets():
+    assert "--bind 0.0.0.0:${PORT:-8000}" in (ROOT / "Dockerfile").read_text()

@@ -102,7 +102,7 @@ def test_public_api_does_not_accept_writes(api, url):
 
 
 def test_health_and_schema(api):
-    assert api.get("/health/").json() == {"status": "ok"}
+    assert api.get("/health/").json() == {"status": "ok", "version": "1.0.0", "revision": ""}
     response = api.get("/api/schema/?format=json")
     assert response.status_code == 200
     assert "/api/v1/offices/" in response.json()["paths"]
@@ -183,3 +183,8 @@ def test_api_version_matches_the_package(api):
     project = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
     schema = api.get("/api/schema/", {"format": "json"}).json()
     assert schema["info"]["version"] == project["project"]["version"] == "1.0.0"
+
+
+def test_health_reports_the_served_revision(api, settings):
+    settings.REVISION = "abc123"
+    assert api.get("/health/").json()["revision"] == "abc123"

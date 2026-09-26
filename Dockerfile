@@ -20,5 +20,6 @@ ENV SQLITE_PATH=/data/db.sqlite3 PATH=/app/.venv/bin:$PATH
 # The image is for hosting, where the unauthenticated change-source page must stay off.
 ENV SITE_ALLOW_SOURCE_CHANGE=false
 USER appuser
+# Listens on $PORT when a host sets it (Render, most PaaS), otherwise on 8000.
 EXPOSE 8000
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --access-logfile -"]

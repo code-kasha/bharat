@@ -7,7 +7,7 @@ A helper that tells you which India Post offices sit behind a PIN code or place 
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![Django 5.2 LTS](https://img.shields.io/badge/django-5.2%20LTS-0c4b33.svg)](https://docs.djangoproject.com/en/5.2/)
 
-[Download v1.0.0](https://github.com/code-kasha/bharat-post-dir/releases/latest) · [API reference](docs/api.md) · [Download the whole directory](docs/api.md#the-whole-directory-in-one-download) · [Your own dataset](docs/datasets.md) · [Deploy it yourself](docs/deployment.md) · [Contributing](CONTRIBUTING.md)
+[Live demo](https://bharat-post-dir.onrender.com/) (until 26 December 2026) · [Download v1.0.0](https://github.com/code-kasha/bharat-post-dir/releases/latest) · [API reference](docs/api.md) · [Download the whole directory](docs/api.md#the-whole-directory-in-one-download) · [Your own dataset](docs/datasets.md) · [Deploy it yourself](docs/deployment.md) · [Contributing](CONTRIBUTING.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
@@ -23,6 +23,8 @@ A helper that tells you which India Post offices sit behind a PIN code or place 
 - **Ready-to-run Docker image** for your own deployment; SQLite, no external services.
 
 > **Status:** complete as of v1.0.0 and not actively maintained. It works as-is; fork it, reuse it, grow it.
+>
+> **Demo:** [bharat-post-dir.onrender.com](https://bharat-post-dir.onrender.com/) runs until 26 December 2026 on a free tier, so the first request after a quiet spell takes about a minute. After that date, run it yourself with Docker or Python.
 
 ## Quick start
 

@@ -113,6 +113,24 @@ Also **verified on Windows 11** with Docker Desktop (Engine 29.8.0) and Caddy 2 
 
 **Support window.** bharat-post-dir uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running bharat-post-dir publicly after that.
 
+## Hosted demo
+
+The public demo, [bharat-post-dir.onrender.com](https://bharat-post-dir.onrender.com/), runs on [Render](https://render.com/)'s free tier until 26 December 2026, then shuts down as planned. Free services sleep after 15 minutes without traffic, so the first request after that takes about a minute. The demo serves the bundled directory read-only, with the change-source page off, so it needs no persistent disk; the secret key lives on the container's temporary disk.
+
+It is built from this repository's `Dockerfile` on `main`. Render's own auto-deploy is off: after every push to `main`, the `deploy` job in CI waits for the checks, triggers Render's deploy hook, and waits until `/health/` reports the new commit (`revision`, which Render provides as `RENDER_GIT_COMMIT`). The job appears as the `production` environment in the repository's Deployments.
+
+To set up the same thing (for a fork, for example):
+
+1. Create a free Render account, then a **Web Service** from the GitHub repository, branch `main`. Render detects the `Dockerfile`; choose the **Free** instance type. The container listens on the `PORT` that Render sets.
+2. Set the environment variables, using the service's `onrender.com` host name:
+   - `DJANGO_ALLOWED_HOSTS=your-service.onrender.com`
+   - `DJANGO_CSRF_TRUSTED_ORIGINS=https://your-service.onrender.com`
+   - `SITE_DEMO_UNTIL=2026-12-26`, which shows the end date on every page (leave it out for a permanent site)
+3. Set the health check path to `/health/`, and turn **Auto-Deploy** off so only CI deploys, after the checks.
+4. Copy the service's **Deploy Hook** URL. In the GitHub repository's **Settings → Secrets and variables → Actions**, add it as the secret `DEPLOY_HOOK_URL`, and add the variable `DEMO_URL` with the service's `https://…onrender.com` address. The `deploy` job is skipped until `DEMO_URL` is set.
+
+Render terminates HTTPS in front of the app. `DJANGO_HTTPS` and `TRUST_PROXY_HTTPS` stay off there: this project has not verified that Render's proxy overwrites `X-Forwarded-Proto`, and the demo has no forms or sessions that need secure cookies.
+
 ## Configuration
 
 Environment variables are read by Django. `.env` files are not automatically loaded by Django; use `uv run --env-file .env ...` if you create one from `.env.example`.
@@ -127,6 +145,9 @@ Environment variables are read by Django. `.env` files are not automatically loa
 | `DATA_GOV_IN_API_KEY` | Required only by `fetch_postal_data` |
 | `DJANGO_HTTPS` | `false`; `true` turns on the HTTPS redirect, HSTS (one year) and secure cookies. Only for a site served over HTTPS |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Empty; comma-separated origins such as `https://example.com` for a hosted site |
+| `SITE_DEMO_UNTIL` | Empty; a date such as `2026-12-26` shows "This is a demo that runs until …" on every page |
+| `SITE_REVISION` | Empty; the commit being served, reported by `/health/`. Render's `RENDER_GIT_COMMIT` is used when it is not set |
+| `PORT` | `8000` in the container; hosts such as Render set it |
 | `TRUST_PROXY_HTTPS` | `false`; enable only behind a trusted TLS proxy that overwrites `X-Forwarded-Proto` (see [Deploying it yourself](#deploying-it-yourself)) |
 
 Only the bundled `db.sqlite3` is tracked; other databases and SQLite's `-wal`/`-shm` files are gitignored. Committing a refreshed `db.sqlite3` adds its full size to Git history each time.
