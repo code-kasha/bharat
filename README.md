@@ -2,7 +2,7 @@
 
 An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from. Read the [project write-up](http://localhost:3000/projects/bharat) for background.
 
-**Status:** API milestone. The repository ships `db.sqlite3` with the verified Bharat directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates. Its source date is on or before June 2023: the file was committed to this repository on 28 June 2023. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. No hosted deployment exists yet. A PIN may map to multiple offices. Bharat lists post offices and whether each one delivers mail; it cannot tell you whether a particular street address exists.
+**Status:** API milestone. The repository ships `db.sqlite3` with the verified Bharat directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates. Its source date is on or before June 2023: the file was committed to this repository on 28 June 2023. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. Bharat runs in production mode by default, locally and in Docker; to use your own dataset, run it locally or [deploy it yourself](#deploying-it-yourself). No hosted deployment exists yet. A PIN may map to multiple offices. Bharat lists post offices and whether each one delivers mail; it cannot tell you whether a particular street address exists.
 
 ## Get the code
 
@@ -24,6 +24,14 @@ uv sync --frozen
 uv run python manage.py migrate
 uv run python manage.py runserver
 ```
+
+This runs in **production mode** (`DJANGO_DEBUG=false`), the default everywhere: no debug pages, and a random secret key created once in `.secret_key` next to the database (gitignored). Uploads on the [change-source page](#changing-the-source) are temporary and seen only by your browser. **Contributor mode** is opt-in: set `DJANGO_DEBUG=true` to get Django's debug pages and to save uploads over `db.sqlite3` so you can share them.
+
+| Shell | Contributor mode |
+| --- | --- |
+| bash, zsh, Git Bash | `DJANGO_DEBUG=true uv run python manage.py runserver` |
+| PowerShell | `$env:DJANGO_DEBUG = "true"`, then `uv run python manage.py runserver` |
+| cmd | `set DJANGO_DEBUG=true`, then `uv run python manage.py runserver` |
 
 To load current official data instead, get a free data.gov.in API key (sign in at [data.gov.in](https://www.data.gov.in/) and copy it from your account's API key page), then set it in your shell and run `uv run python manage.py fetch_postal_data`:
 
@@ -153,7 +161,7 @@ Upstream updates the directory roughly monthly. Refresh by re-running the comman
 - `postal/export.py`: the streamed, versioned whole-directory download.
 - `tests/`: synthetic API-shaped fixtures (no network), fetch/rollback regressions, API behavior.
 
-The design deliberately keeps one directory snapshot, no user accounts, and no runtime dependency on the upstream API. SQLite runs in WAL mode, so reads continue during a replacement. Writers use immediate transactions, so concurrent fetches are serialized. PIN lookup uses an indexed exact match. Place search uses substring matching; it is not fuzzy search. Django 5.2 is an [LTS release](https://docs.djangoproject.com/en/5.2/releases/5.2/).
+The design deliberately keeps one directory snapshot, no user accounts, and no runtime dependency on the upstream API. SQLite runs in WAL mode, so reads continue during a replacement. Writers use immediate transactions, so concurrent fetches are serialized. PIN lookup uses an indexed exact match. Place search uses substring matching; it is not fuzzy search. Django 5.2 is an [LTS release](https://docs.djangoproject.com/en/5.2/releases/5.2/) with security support until April 2028.
 
 ## Performance
 
@@ -181,12 +189,14 @@ Environment variables are read by Django. `.env` files are not automatically loa
 | Variable | Local default / purpose |
 | --- | --- |
 | `DJANGO_DEBUG` | `false` (production mode); `true` is contributor mode and saves uploads over the database |
-| `DJANGO_SECRET_KEY` | Development-only fallback; provide a generated secret in production |
+| `DJANGO_SECRET_KEY` | Optional; without it a random key is created once in `.secret_key` next to the database (`/data/.secret_key` in the container) and reused |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1]`; comma-separated hostnames |
 | `SQLITE_PATH` | `db.sqlite3` in the repository; `/data/bharat.sqlite3` in the container |
 | `BHARAT_ALLOW_SOURCE_CHANGE` | `true` in a clone, `false` in the Docker image; enables the local [change-source page](#changing-the-source). Set `false` on any hosted site |
 | `DATA_GOV_IN_API_KEY` | Required only by `fetch_postal_data` |
-| `TRUST_PROXY_HTTPS` | `false`; enable only behind a trusted TLS proxy that strips incoming forwarding headers |
+| `DJANGO_HTTPS` | `false`; `true` turns on the HTTPS redirect, HSTS (one year) and secure cookies. Only for a site served over HTTPS |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Empty; comma-separated origins such as `https://bharat.example.com` for a hosted site |
+| `TRUST_PROXY_HTTPS` | `false`; enable only behind a trusted TLS proxy that overwrites `X-Forwarded-Proto` (see [Deploying it yourself](#deploying-it-yourself)) |
 
 Only the bundled `db.sqlite3` is tracked; other databases and SQLite's `-wal`/`-shm` files are gitignored. Committing a refreshed `db.sqlite3` adds its full size to Git history each time.
 
@@ -212,7 +222,7 @@ docker build -t bharat:local .
 docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat:local
 ```
 
-The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
+The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. It is built for hosting: it runs in production mode, and the change-source page is off (`BHARAT_ALLOW_SOURCE_CHANGE=false`). To try uploads in a local container, add `-e BHARAT_ALLOW_SOURCE_CHANGE=true` to `docker run`; never do that on a public server. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
 
 - [health](http://127.0.0.1:18000/health/) should report `ok`
 - [dataset](http://127.0.0.1:18000/api/v1/dataset/) should report `row_count: 155599`
@@ -278,9 +288,66 @@ If the error mentions a missing `dockerDesktopLinuxEngine` pipe, open Docker Des
 
 GitHub Actions installs the frozen lockfile, checks formatting/lint, runs tests, validates migrations/OpenAPI and builds the container. A `v*` Git tag publishes a versioned image to `ghcr.io/<owner>/<repository>` only after these checks pass. CI does not contact data.gov.in. No image has been published yet.
 
-The Docker image uses Gunicorn and an unprivileged user, and stores the SQLite database in `/data`. Build with `docker build -t bharat:local .`.
+## Deploying it yourself
 
-Hosting is out of scope for now; the project is meant to run locally, with or without Docker. When hosting is needed, use one container with a persistent volume at `/data`: SQLite must not be shared across hosts or network filesystems. Also set `DJANGO_DEBUG=false`, a generated `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS`, put TLS ingress in front, and back up `/data/bharat.sqlite3` before migrations.
+Run one container on a server with a persistent volume at `/data`, and put a TLS reverse proxy in front of it. SQLite must stay on that one volume: never share it across hosts or put it on a network filesystem. The image runs Gunicorn with two workers as an unprivileged user.
+
+The commands below are for a Linux server shell. Replace `bharat.example.com` with your domain, and point its DNS at the server first so the proxy can obtain a certificate.
+
+1. Build the image on the server (or push it from elsewhere), and create a network the proxy and the app share:
+
+   ```sh
+   docker build -t bharat:local .
+   docker network create bharat
+   ```
+
+2. Start Bharat. It publishes no port, so it is reachable only through the proxy:
+
+   ```sh
+   docker run -d --name bharat --restart unless-stopped --network bharat \
+     -v bharat-data:/data \
+     -e DJANGO_ALLOWED_HOSTS=bharat.example.com \
+     -e DJANGO_CSRF_TRUSTED_ORIGINS=https://bharat.example.com \
+     -e DJANGO_HTTPS=true -e TRUST_PROXY_HTTPS=true \
+     -e BHARAT_ALLOW_SOURCE_CHANGE=false \
+     bharat:local
+   ```
+
+   On first use the empty `bharat-data` volume is seeded with the bundled directory. The secret key is created once in `/data/.secret_key` on the volume, so it survives restarts; set `DJANGO_SECRET_KEY` instead if you prefer to manage it. `BHARAT_ALLOW_SOURCE_CHANGE=false` is the image's default, repeated so a hosted site never enables the unauthenticated change-source page. To serve your own dataset, load it locally in contributor mode first and build the image from that `db.sqlite3`, or run `fetch_postal_data` in the container.
+
+3. Put [Caddy](https://caddyserver.com/) in front for HTTPS. Save this as `Caddyfile`:
+
+   ```text
+   bharat.example.com {
+       reverse_proxy bharat:8000
+   }
+   ```
+
+   ```sh
+   docker run -d --name caddy --restart unless-stopped --network bharat \
+     -p 80:80 -p 443:443 \
+     -v ./Caddyfile:/etc/caddy/Caddyfile:ro -v caddy-data:/data \
+     caddy:2
+   ```
+
+   Caddy obtains and renews the certificate, and sets `X-Forwarded-Proto` itself, replacing any value a client sends. That is what makes `TRUST_PROXY_HTTPS=true` safe. Without it, `DJANGO_HTTPS=true` would redirect forever, because Bharat would see plain HTTP from the proxy. Only use `TRUST_PROXY_HTTPS` behind a proxy that overwrites the header like this.
+
+4. Check `https://bharat.example.com/health/` (it reports `ok`), the lookup page and `/api/v1/dataset/`. `/source/` should return 404. HSTS tells browsers to insist on HTTPS for a year, so enable `DJANGO_HTTPS` only once HTTPS works.
+
+**Backups.** The directory and the secret key live on the volume. Copy a consistent snapshot of the database with SQLite's backup API, then copy it off the server:
+
+```sh
+docker exec bharat python -c "import sqlite3; sqlite3.connect('/data/bharat.sqlite3').backup(sqlite3.connect('/data/backup.sqlite3'))"
+docker cp bharat:/data/backup.sqlite3 ./bharat-backup.sqlite3
+```
+
+Back up before every update, because migrations run automatically when the container starts.
+
+**Updates.** Build or pull the new image, then replace the container with the same volume and settings: `docker stop bharat && docker rm bharat`, then the `docker run` from step 2. The volume keeps its data; a rebuilt image does not replace an existing volume's directory. To switch to the directory bundled in a new image, remove the volume (`docker volume rm bharat-data`) before starting the container.
+
+**Rollback.** Migrations only move forward, so roll back the image and the data together: stop and remove the container, restore the backup into the volume (for example with `docker run --rm -v bharat-data:/data -v "$PWD":/backup alpine cp /backup/bharat-backup.sqlite3 /data/bharat.sqlite3`, after deleting any `/data/bharat.sqlite3-wal` and `-shm` files), then start the previous image tag with the step 2 command.
+
+**Support window.** Bharat uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running Bharat publicly after that.
 
 ## Next milestones
 

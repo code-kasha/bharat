@@ -27,7 +27,9 @@ Bharat is a read-only Django REST Framework postal directory. Use Python 3.13 an
 - Tests use synthetic API-shaped fixtures and must never reach the network.
 - Never commit API keys. Only the bundled `db.sqlite3` is tracked: the maintainer-verified 2023
   snapshot (git f9ea722), with three repeated office identities kept as-is. Do not alter its rows.
-- The Docker image bundles `db.sqlite3` and must run locally with no extra setup; hosting is out of scope.
+- Production mode (`DEBUG` off) is the default everywhere; contributor mode is `DJANGO_DEBUG=true`.
+- The Docker image is for hosting (production mode, change source off). It bundles `db.sqlite3` and must
+  still run locally with no extra setup. Deployment steps are in the README ("Deploying it yourself").
 - The lookup page (`/`) must cost one HTTP request: inline CSS only, no JavaScript or external assets.
 - `/api/v1/export/` must deliver the whole directory in one streamed request; never paginate it.
 - Do not manually edit generated migrations or uv.lock. Generate and review them.

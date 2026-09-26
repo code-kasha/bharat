@@ -58,7 +58,7 @@ Pick up from here. Nothing below is started unless marked done.
 6. **Contributing and license** — DONE (`release-v1`). `CONTRIBUTING.md` added; README "License" became "Contributing and license".
    - Add `CONTRIBUTING.md`: the project is finished and not actively maintained; MIT, no constraints; fork freely; how to share an updated dataset (PR with `db.sqlite3` and its source details, or publish your fork); a mention is appreciated.
    - Add a README "Contributing and license" section linking it.
-7. **Docs**
+7. **Docs** — DONE (`release-v1`). README: production mode by default and contributor mode per shell, full configuration table, Docker image notes, a new "Deploying it yourself" section (app container on a private network, Caddy, backups, updates, rollback, Django 5.2 support to April 2028). AGENTS.md updated. Performance numbers unchanged: lookup still one request and 3 queries. The deploy steps are verified in task 8.
    - README: production-by-default, "run it locally or deploy it yourself to use your own dataset", the temporary vs saved upload behaviour, duplicates kept, JSON formats.
    - A production deployment section: `docker run` with the production env vars, a persistent `/data` volume, a reverse proxy for TLS (Caddy example), `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, HTTPS flags, backups, updates and rollback.
    - Refresh AGENTS.md and the performance/request-count numbers if anything changes.
