@@ -394,3 +394,63 @@ def test_single_listings_do_not_mention_repeats(client, directory, local):
     upload(client, GOOD)
     html = client.get("/?updated=1").content.decode()
     assert "every version was kept" not in html and "<dt>Listed more than once</dt>" not in html
+
+
+def upload_file(client, body, name="data.json", **fields):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    data = {"file": SimpleUploadedFile(name, body), "source": ""} | fields
+    return client.post("/source/", data)
+
+
+def test_bharat_export_round_trips_with_its_provenance(client, directory, local):
+    from postal.models import Dataset, PostOffice
+
+    Dataset.objects.update(source_period="On or before June 2023")
+    before = list(PostOffice.objects.values_list("pincode", "office_name", "latitude"))
+    export = b"".join(client.get("/api/v1/export/").streaming_content)
+    response = upload_file(client, export)
+    assert response.status_code == 302
+    dataset = Dataset.objects.get()
+    assert (dataset.source, dataset.source_period) == ("test fixture", "On or before June 2023")
+    assert list(PostOffice.objects.values_list("pincode", "office_name", "latitude")) == before
+
+
+def test_typed_source_details_override_the_export(client, directory, local):
+    from postal.models import Dataset
+
+    export = b"".join(client.get("/api/v1/export/").streaming_content)
+    upload_file(client, export, source="Mine", source_period="2024")
+    dataset = Dataset.objects.get()
+    assert (dataset.source, dataset.source_period) == ("Mine", "2024")
+
+
+def test_json_without_provenance_needs_a_source(client, directory, local):
+    import json
+
+    body = json.dumps({"records": [{"officename": "X"}]}).encode()
+    html = upload_file(client, body).content.decode()
+    assert "record 1: missing fields" in html
+    body = json.dumps(
+        [
+            {"pincode": "560001"}
+            | dict.fromkeys(
+                [
+                    "officename",
+                    "district",
+                    "statename",
+                    "circlename",
+                    "regionname",
+                    "divisionname",
+                    "officetype",
+                    "delivery",
+                ],
+                "V",
+            )
+        ]
+    ).encode()
+    response = upload_file(client, body)
+    assert (
+        response.status_code == 400 and "Say where the data came from." in response.content.decode()
+    )
+    assert upload_file(client, body, source="Survey").status_code == 302

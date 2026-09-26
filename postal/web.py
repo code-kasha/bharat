@@ -8,7 +8,7 @@ from django.shortcuts import redirect, render
 from django.views.decorators.http import require_POST
 
 from postal import uploads
-from postal.importer import ImportFailure, parse_csv, replace_dataset
+from postal.importer import ImportFailure, parse_upload, replace_dataset
 from postal.models import Dataset
 from postal.queries import is_pin, offices_for_pin, search_offices
 
@@ -95,10 +95,9 @@ def share_details(dataset):
 
 
 class SourceForm(forms.Form):
-    file = forms.FileField(error_messages={"required": "Choose a CSV file to upload."})
-    source = forms.CharField(
-        max_length=500, error_messages={"required": "Say where the data came from."}
-    )
+    file = forms.FileField(error_messages={"required": "Choose a CSV or JSON file to upload."})
+    # Optional only because a Bharat export carries its own source; checked in clean().
+    source = forms.CharField(max_length=500, required=False)
     source_date = forms.DateField(
         required=False, error_messages={"invalid": "Enter a date like 2025-06-30."}
     )
@@ -118,11 +117,21 @@ class SourceForm(forms.Form):
         if self.errors:
             return data
         try:
-            self.parsed = parse_csv(data["file"].read())
+            self.parsed, carried = parse_upload(data["file"].read())
         except ImportFailure as exc:
             self.add_error("file", str(exc))
             return data
-        self.parsed.source_date = data.get("source_date")
+        # A Bharat export says where its data came from; what the uploader types wins.
+        if not data["source"].strip():
+            data["source"] = carried.get("source", "")
+        if not data["source_date"] and not data["source_period"].strip():
+            data["source_date"] = carried.get("source_date")
+            data["source_period"] = "" if data["source_date"] else carried.get("source_period", "")
+        if not data["source"].strip():
+            self.add_error("source", "Say where the data came from.")
+        elif len(data["source"]) > 500 or len(data["source_period"]) > 100:
+            self.add_error("source", "The file's source details are too long; type shorter ones.")
+        self.parsed.source_date = data["source_date"]
         return data
 
 

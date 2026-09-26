@@ -49,9 +49,14 @@ The page is built for keyboard and screen-reader use. It has a skip link, a labe
 
 ## Changing the source
 
-Bharat is meant to run locally, so you can replace the directory with your own CSV from the browser. Follow **change source** on the home page, or open [`/source/`](http://127.0.0.1:8000/source/). Choose the file, say where it came from, and optionally give either an exact source date or an approximate one such as "2024–2025". Leave both empty if you do not know; Bharat never guesses a date.
+Bharat is meant to run locally, so you can try or replace the directory with your own CSV or JSON file from the browser. Follow **change source** on the home page, or open [`/source/`](http://127.0.0.1:8000/source/). Choose the file, say where it came from, and optionally give either an exact source date or an approximate one such as "2024–2025". Leave both empty if you do not know; Bharat never guesses a date.
 
-The CSV uses the directory's column layout: `Circle Name`, `Region Name`, `Division Name`, `Office Name`, `Pincode`, `OfficeType`, `Delivery`, `District` and `StateName`, in any order. Spaces, underscores and case in column names are ignored. `Latitude` and `Longitude` are optional; other columns are ignored. The file must be UTF-8 (Excel's "CSV UTF-8") and at most 100 MB.
+The format is detected from the file's content, not its name:
+
+- **CSV** uses the directory's column layout: `Circle Name`, `Region Name`, `Division Name`, `Office Name`, `Pincode`, `OfficeType`, `Delivery`, `District` and `StateName`, in any order. Spaces, underscores and case in column names are ignored. `Latitude` and `Longitude` are optional; other columns are ignored.
+- **JSON** can be Bharat's own [whole-directory download](#downloading-the-whole-directory) (`{"dataset": ..., "offices": [...]}`), a data.gov.in API response (`{"records": [...]}`), or a plain list of offices. Offices use the CSV column names or Bharat's field names (`office_name`, `pincode`, `state`, `circle`, `region`, `division`, `office_type`, `delivery`, `district`, `latitude`, `longitude`). A Bharat download records its own source and date, which fill in the form fields you leave empty; anything you type wins.
+
+Either way the file must be UTF-8 (Excel's "CSV UTF-8") and at most 100 MB. Problems are listed by CSV line number or JSON record number.
 
 The upload goes through the same importer as `fetch_postal_data`. The whole file is validated before anything is written; any invalid row rejects the file, the page lists up to 10 problems by CSV line number, and nothing is kept. Exact repeated rows are merged. An office listed more than once with different details (same PIN, state, district and office name) is kept in every version, because government data can list an office twice legitimately; the page, `/api/v1/dataset/` (`repeated_identity_count`) and the upload result say how many there are.
 

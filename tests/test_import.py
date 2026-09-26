@@ -1,3 +1,4 @@
+import re
 from datetime import date
 from io import StringIO
 from unittest.mock import patch
@@ -244,3 +245,85 @@ def test_migration_counts_repeated_offices_in_an_existing_directory(records):
     migration = import_module("postal.migrations.0006_count_repeated_identities")
     migration.count_repeated_identities(apps, SimpleNamespace(connection=connection))
     assert Dataset.objects.get().repeated_identity_count == 1
+
+
+def bharat_office(name="Office A", **overrides):
+    """An office as Bharat's export and API write it."""
+    return {
+        "pincode": "400001",
+        "office_name": name,
+        "district": "District",
+        "state": "State",
+        "circle": "Circle",
+        "region": "",
+        "division": "Division",
+        "office_type": "HO",
+        "delivery": "Delivery",
+        "latitude": None,
+        "longitude": 72.83,
+    } | overrides
+
+
+def as_json(document):
+    import json
+
+    return json.dumps(document).encode()
+
+
+def test_json_bharat_export_carries_its_provenance():
+    from postal.importer import parse_upload
+
+    raw = as_json(
+        {
+            "dataset": {"source": "Bharat mirror", "source_date": "2025-06-30", "row_count": 2},
+            "offices": [bharat_office(), bharat_office("Office B")],
+        }
+    )
+    parsed, carried = parse_upload(raw)
+    assert carried == {"source": "Bharat mirror", "source_date": date(2025, 6, 30)}
+    assert [row["office_name"] for row in parsed.offices] == ["Office A", "Office B"]
+    assert parsed.offices[0]["state"] == "State" and parsed.offices[0]["region"] == ""
+    assert (parsed.offices[0]["latitude"], parsed.offices[0]["longitude"]) == (None, 72.83)
+    import hashlib
+
+    assert parsed.checksum == hashlib.sha256(raw).hexdigest()
+
+
+def test_json_data_gov_in_response_and_plain_lists():
+    from postal.importer import parse_upload
+
+    response = {"total": 2, "records": [office(), office("Office B", pincode=400002)]}
+    parsed, carried = parse_upload(as_json(response))
+    assert carried == {} and parsed.offices[1]["pincode"] == "400002"
+    csv_names = {
+        "Circle Name": "C",
+        "Region Name": "R",
+        "Division Name": "D",
+        "Office Name": "Listed",
+        "Pincode": "560001",
+        "OfficeType": "HO",
+        "Delivery": "Delivery",
+        "District": "Bengaluru",
+        "StateName": "Karnataka",
+    }
+    for records in ([csv_names], [bharat_office("Listed")]):
+        parsed, carried = parse_upload(b"\n  " + as_json(records))
+        assert carried == {} and parsed.offices[0]["office_name"] == "Listed"
+
+
+@pytest.mark.parametrize(
+    "raw,message",
+    [
+        (b'{"offices": [', "not valid JSON: Expecting value at line 1, column 14"),
+        (b'{"rows": []}', "Unrecognized JSON"),
+        (b"[]", "no offices"),
+        (as_json([bharat_office(), bharat_office(pincode="0123")]), "record 2: PIN must"),
+        (as_json({"records": [office(), "x"]}), "record 2: missing fields"),
+        (as_json([bharat_office(state=["A"])]), "record 1: fields must be text"),
+    ],
+)
+def test_bad_json_is_explained(raw, message):
+    from postal.importer import parse_upload
+
+    with pytest.raises(ImportFailure, match=re.escape(message)):
+        parse_upload(raw)

@@ -30,6 +30,13 @@ FIELDS = {
     "district": "district",
     "statename": "state",
 }
+# Bharat's own field names (the export and API), normalized like the keys above.
+ALIASES = {
+    "state": "statename",
+    "circle": "circlename",
+    "region": "regionname",
+    "division": "divisionname",
+}
 COORDINATES = {"latitude": 90, "longitude": 180}
 
 
@@ -127,10 +134,15 @@ def parse_records(records, *, source_date=None, position="record {}".format):
             raw = {}
         else:
             raw = {re.sub(r"[\s_]", "", str(key)).lower(): value for key, value in record.items()}
+            for alias, key in ALIASES.items():
+                if alias in raw and key not in raw:
+                    raw[key] = raw.pop(alias)
         values = {field: str(raw.get(key) or "").strip() for key, field in FIELDS.items()}
         problem = None
         if missing := sorted(key for key in FIELDS if key not in raw):
             problem = f"missing fields: {', '.join(missing)}"
+        elif nested := sorted(key for key in FIELDS if isinstance(raw[key], dict | list)):
+            problem = f"fields must be text, not lists or objects: {', '.join(nested)}"
         elif not re.fullmatch(r"[1-9][0-9]{5}", values["pincode"]):
             problem = "PIN must contain six digits and cannot start with zero"
         else:
@@ -168,13 +180,21 @@ def parse_records(records, *, source_date=None, position="record {}".format):
     )
 
 
-def parse_csv(raw):
-    """Validate an uploaded CSV (the directory's column layout) without writing anything."""
+def _decode(raw):
     try:
-        text = raw.decode("utf-8-sig")
+        return raw.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
-        message = "The file is not UTF-8 text. Save it as CSV UTF-8 and try again."
+        message = "The file is not UTF-8 text. Save it as CSV UTF-8 (or UTF-8 JSON) and try again."
         raise ImportFailure(message) from exc
+
+
+def _finish(parsed, raw):
+    # Record the file's own hash so users can check it with any SHA256 tool.
+    parsed.checksum = hashlib.sha256(raw).hexdigest()
+    return parsed
+
+
+def _parse_csv_text(text, raw):
     try:
         reader = csv.DictReader(io.StringIO(text, newline=""))
         rows = []
@@ -188,10 +208,66 @@ def parse_csv(raw):
     except csv.Error as exc:
         raise ImportFailure(f"The file is not valid CSV: {exc}") from exc
     # Line 1 is the header, so record N is on line N + 1 of the file.
-    parsed = parse_records(rows, position=lambda number: f"line {number + 1}")
-    # Record the file's own hash so users can check it with any SHA256 tool.
-    parsed.checksum = hashlib.sha256(raw).hexdigest()
-    return parsed
+    return _finish(parse_records(rows, position=lambda number: f"line {number + 1}"), raw)
+
+
+def parse_csv(raw):
+    """Validate an uploaded CSV (the directory's column layout) without writing anything."""
+    return _parse_csv_text(_decode(raw), raw)
+
+
+JSON_SHAPES = (
+    'Bharat\'s export ({"dataset": ..., "offices": [...]}), a data.gov.in response '
+    '({"records": [...]}) or a list of offices'
+)
+
+
+def _export_details(dataset):
+    """Provenance carried by a Bharat export, used for form fields the uploader left empty."""
+    if not isinstance(dataset, dict):
+        return {}
+    details = {}
+    for field in ("source", "source_period"):
+        if isinstance(dataset.get(field), str) and dataset[field].strip():
+            details[field] = dataset[field].strip()
+    if isinstance(dataset.get("source_date"), str):
+        try:
+            details["source_date"] = date.fromisoformat(dataset["source_date"])
+        except ValueError:
+            pass
+    return details
+
+
+def parse_json(raw, text=None):
+    """Validate an uploaded JSON file in any accepted shape; returns (parsed, export details)."""
+    try:
+        document = json.loads(_decode(raw) if text is None else text)
+    except json.JSONDecodeError as exc:
+        raise ImportFailure(
+            f"The file is not valid JSON: {exc.msg} at line {exc.lineno}, column {exc.colno}."
+        ) from exc
+    details = {}
+    if isinstance(document, list):
+        records = document
+    elif isinstance(document, dict) and isinstance(document.get("offices"), list):
+        records = document["offices"]
+        details = _export_details(document.get("dataset"))
+    elif isinstance(document, dict) and isinstance(document.get("records"), list):
+        records = document["records"]
+    else:
+        raise ImportFailure(f"Unrecognized JSON. Upload {JSON_SHAPES}.")
+    return _finish(parse_records(records), raw), details
+
+
+def parse_upload(raw):
+    """Validate an uploaded CSV or JSON file, detected from its content, without writing.
+
+    Returns the parsed dataset and any provenance the file itself carries (a Bharat export).
+    """
+    text = _decode(raw)
+    if text.lstrip()[:1] in ("{", "["):
+        return parse_json(raw, text)
+    return _parse_csv_text(text, raw), {}
 
 
 def replace_dataset(parsed, *, source, source_period="", using=DEFAULT_DB_ALIAS):
