@@ -47,7 +47,7 @@ Pick up from here. Nothing below is started unless marked done.
    - "Back to the default dataset" button. Keep one request per page.
 3. **Saving uploads (`DJANGO_DEBUG=true`)** — DONE (`release-v1`). The note is on `/?updated=1` after a saved upload; the repository URL is `REPOSITORY_URL` in settings (update it in task 10). `replace_dataset` now checkpoints the WAL so a committed `db.sqlite3` is complete.
    - Keep the current replace-`db.sqlite3` behaviour.
-   - After success, show a "Share this dataset" note: git commands (branch, commit `db.sqlite3`), a link to open a PR on `code-kasha/bharat` **or publish your fork**, and a pre-filled description (source, date or period, office count, SHA256). Say plainly that the PR may not be reviewed.
+   - After success, show a "Share this dataset" note: git commands (branch, commit `db.sqlite3`), a link to open a PR on `code-kasha/bharat-post-dir` **or publish your fork**, and a pre-filled description (source, date or period, office count, SHA256). Say plainly that the PR may not be reviewed.
    - Temporary uploads show a lighter note: run with `DJANGO_DEBUG=true` to save and share it.
 4. **Keep conflicting duplicates** — DONE (`release-v1`). `Dataset.repeated_identity_count` (generated migration 0005, data migration 0006 fills it from existing rows). Bundled `db.sqlite3` migrated: office rows byte-identical, count = 3. Verified by exporting the bundled 155,599 rows to CSV and uploading them in contributor mode: all loaded, 3 repeated offices kept.
    - Importer: stop rejecting conflicting identities; count offices listed more than once (e.g. `repeated_identity_count` on `Dataset`, via a generated migration) and show it on the page, the API and the upload result.
