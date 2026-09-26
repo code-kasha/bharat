@@ -2,6 +2,11 @@
 
 An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from. Read the [project write-up](http://localhost:3000/projects/bharat) for background.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
+  <img src="docs/images/home-light.png" width="1280" alt="The Bharat lookup page: a search box for a PIN or place name, and an 'About this data' panel giving the source (verified by the project maintainer), the source date (on or before June 2023), the load date and 155,599 offices, 3 of them listed more than once.">
+</picture>
+
 **Status:** API milestone. The repository ships `db.sqlite3` with the verified Bharat directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates. Its source date is on or before June 2023: the file was committed to this repository on 28 June 2023. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. Bharat runs in production mode by default, locally and in Docker; to use your own dataset, run it locally or [deploy it yourself](#deploying-it-yourself). No hosted deployment exists yet. A PIN may map to multiple offices. Bharat lists post offices and whether each one delivers mail; it cannot tell you whether a particular street address exists.
 
 ## Get the code

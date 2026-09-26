@@ -72,7 +72,12 @@ Pick up from here. Nothing below is started unless marked done.
    - `gh repo rename bharat-post-dir`; update the local `origin` remote. GitHub redirects old URLs, but update every reference anyway.
    - References to update: README clone URL and links, the PR link in the "Share this dataset" note, `pyproject.toml` name, Docker image names in docs (`bharat:local` to `bharat-post-dir:local`), `ghcr.io/code-kasha/bharat-post-dir` (CI derives it from the repo name), AGENTS.md, CONTRIBUTING.md and the memory note.
    - Keep the internal Django package names (`config`, `postal`) as they are.
-11. **Screenshots** (after tasks 1–5, so they show the final UI)
+11. **Screenshots** — DONE except the API docs shot. In `docs/images/` (all under 125 KB): `home-light.png`, `home-dark.png`, `search-delhi.png`, `phone.png`, `change-source.png`, `share-dataset.png`, `social-preview.png` (1280×640, for GitHub Settings → Social preview; the user uploads it). README hero added with `<picture>`. Screenshots found and fixed two UI issues: the data panel squeezed its values on phones (now stacks under 40rem), and counts now show thousands separators (155,599). **API docs screenshot still to take:** the Swagger UI loads from `cdn.jsdelivr.net`, which this cloud environment's network policy blocks; allow it, or take it locally. Alt text for task 12:
+   - `search-delhi.png`: "Search results for Delhi: 544 results, page 1 of 22, in a table of office, PIN, district, state, type, delivery and division."
+   - `phone.png`: "The lookup page on a phone: the data panel's labels and values stacked, the search box with 110001, and the start of 23 results."
+   - `change-source.png`: "The change-source page: a CSV or JSON file, its source, an exact or approximate source date, and an 'Upload and use in this browser' button, with a note that the upload is temporary."
+   - `share-dataset.png`: "The 'Share this dataset' note after a saved upload: git commands to commit db.sqlite3 on a branch, and a ready-made description with source, date, office count and SHA256."
+   - `social-preview.png`: "Bharat Post Directory: which India Post offices sit behind a PIN code or place name. 155,599 offices, lookup page, JSON API, one-file export, Docker and SQLite."
    - Home page (light and dark), "Delhi" search results, phone view, change-source page, "Share this dataset" note, API docs.
    - Save under `docs/images/`, compress to about 200 KB or less each, with alt text. The README hero uses `<picture>` to follow the reader's light or dark theme.
    - Make a 1280×640 social preview image. The user uploads it in GitHub Settings → Social preview (there is no API for it).

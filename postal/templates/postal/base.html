@@ -38,6 +38,8 @@
   .source dl { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0; }
   .source dt { font-weight: 600; }
   .source dd { margin: 0; }
+  /* On narrow screens, a label column as wide as its longest label would squeeze the values. */
+  @media (max-width: 40rem) { .source dl { grid-template-columns: 1fr; gap: 0; } .source dd { margin-bottom: .5rem; } }
   .table-wrap { overflow-x: auto; }
   table { border-collapse: collapse; width: 100%; }
   caption { text-align: left; font-weight: 600; padding-bottom: .5rem; }

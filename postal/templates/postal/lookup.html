@@ -1,15 +1,15 @@
 {% extends "postal/base.html" %}
 
-{% block title %}{% if error %}Error: {% elif page is not None %}{{ page.paginator.count }} result{{ page.paginator.count|pluralize }} for {{ query }} – {% endif %}Bharat postal lookup{% endblock %}
+{% block title %}{% if error %}Error: {% elif page is not None %}{{ page.paginator.count|floatformat:"g" }} result{{ page.paginator.count|pluralize }} for {{ query }} – {% endif %}Bharat postal lookup{% endblock %}
 
 {% block intro %}<p class="muted">Find Indian post offices by PIN or by office or district name.</p>{% endblock %}
 
 {% block content %}
   {% if updated and dataset %}
   {% if upload %}
-  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count }} offices. Only this browser sees it.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %} To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
+  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count|floatformat:"g" }} offices. Only this browser sees it.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %} To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
   {% else %}
-  <p class="notice" role="status">Source updated: {{ dataset.row_count }} offices loaded.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %}</p>
+  <p class="notice" role="status">Source updated: {{ dataset.row_count|floatformat:"g" }} offices loaded.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %}</p>
   {% endif %}
   {% endif %}
   {% if share %}
@@ -37,7 +37,7 @@
       <dt>Loaded</dt>
       <dd><time datetime="{{ dataset.imported_at|date:'c' }}">{{ dataset.imported_at|date:"j F Y" }}</time></dd>
       <dt>Offices</dt>
-      <dd>{{ dataset.row_count }}</dd>
+      <dd>{{ dataset.row_count|floatformat:"g" }}</dd>
       {% if dataset.repeated_identity_count %}
       <dt>Listed more than once</dt>
       <dd>{{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize }} (same PIN, state, district and name, with different details). Every version is shown.</dd>
@@ -71,7 +71,7 @@
   </form>
 
   {% if page is not None %}
-  <h2 id="results-heading">{{ page.paginator.count }} result{{ page.paginator.count|pluralize }} for “{{ query }}”</h2>
+  <h2 id="results-heading">{{ page.paginator.count|floatformat:"g" }} result{{ page.paginator.count|pluralize }} for “{{ query }}”</h2>
   {% if page.object_list %}
   <div class="table-wrap" role="region" aria-labelledby="results-heading" tabindex="0">
     <table>

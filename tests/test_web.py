@@ -454,3 +454,17 @@ def test_json_without_provenance_needs_a_source(client, directory, local):
         response.status_code == 400 and "Say where the data came from." in response.content.decode()
     )
     assert upload_file(client, body, source="Survey").status_code == 302
+
+
+def test_counts_are_grouped_for_reading(client, directory):
+    from postal.models import Dataset
+
+    Dataset.objects.update(row_count=155599)
+    html = client.get("/").content.decode()
+    assert "<dd>155,599</dd>" in html
+    assert "30 results for" in client.get("/", {"q": "market"}).content.decode()
+
+
+def test_data_panel_stacks_on_narrow_screens(client, directory):
+    html = client.get("/").content.decode()
+    assert "@media (max-width: 40rem) { .source dl { grid-template-columns: 1fr;" in html
