@@ -1,12 +1,37 @@
-# Bharat
+A helper that tells you which India Post offices sit behind a PIN code or place name, ready to drop into your own applications as a JSON API or a Docker image. Read the [project write-up](http://localhost:3000/projects/bharat-post-dir) for background.
 
-An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from.
+[![CI](https://github.com/code-kasha/bharat-post-dir/actions/workflows/ci.yml/badge.svg)](https://github.com/code-kasha/bharat-post-dir/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
+[![Django 5.2 LTS](https://img.shields.io/badge/django-5.2%20LTS-0c4b33.svg)](https://docs.djangoproject.com/en/5.2/)
 
-**Status:** API milestone. The repository ships `db.sqlite3` with the verified Bharat directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates, and its source date is not recorded. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. No hosted deployment exists yet. A PIN may map to multiple offices; this service does not verify that a street address is deliverable.
+[API reference](docs/api.md) · [Download the whole directory](docs/api.md#the-whole-directory-in-one-download) · [Your own dataset](docs/datasets.md) · [Deploy it yourself](docs/deployment.md) · [Contributing](CONTRIBUTING.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
+  <img src="docs/images/home-light.png" width="1280" alt="The bharat-post-dir lookup page: a search box for a PIN or place name, and an 'About this data' panel giving the source (verified by the project maintainer), the source date (on or before June 2023), the load date and 155,599 offices, 3 of them listed more than once.">
+</picture>
+
+- **155,599 offices bundled**; it works right after cloning.
+- **Accessible lookup page**: one request per page, no JavaScript.
+- **JSON API** with OpenAPI docs.
+- **The whole directory in one download** (1.4 MB gzipped) that is never resent unchanged.
+- **Every page shows where the data came from** and how current it is.
+- **Bring your own dataset** (CSV or JSON) and share it back.
+- **Ready-to-run Docker image** for your own deployment; SQLite, no external services.
+
+> **Status:** complete as of v1.0.0 and not actively maintained. It works as-is; fork it, reuse it, grow it.
 
 ## Quick start
 
-Requires Python 3.13 and [uv](https://docs.astral.sh/uv/). The bundled `db.sqlite3` already contains data.
+Install [Git](https://git-scm.com/downloads), then clone the repository. The clone includes `db.sqlite3` (about 28 MB) with the whole directory, and every command below runs from its folder:
+
+```sh
+git clone https://github.com/code-kasha/bharat-post-dir.git
+cd bharat-post-dir
+```
+
+**With Python.** Requires Python 3.13 and [uv](https://docs.astral.sh/uv/):
 
 ```sh
 uv sync --frozen
@@ -14,205 +39,131 @@ uv run python manage.py migrate
 uv run python manage.py runserver
 ```
 
-To load current official data instead, get a free data.gov.in API key (sign in at [data.gov.in](https://www.data.gov.in/) and copy it from your account's API key page), then set it in your shell and run `uv run python manage.py fetch_postal_data`:
+Then open the [lookup page](http://127.0.0.1:8000/), the [API documentation](http://127.0.0.1:8000/api/docs/) or [a PIN lookup in JSON](http://127.0.0.1:8000/api/v1/pincodes/110001/).
 
-| Shell | Set the key |
-| --- | --- |
-| bash, zsh, Git Bash | `export DATA_GOV_IN_API_KEY=your-key` |
-| PowerShell | `$env:DATA_GOV_IN_API_KEY = "your-key"` |
-| cmd | `set DATA_GOV_IN_API_KEY=your-key` |
-
-The public sample key is capped at 10 records, so it cannot load the directory.
-
-> **Known blocker (checked 26 September 2026):** data.gov.in's sign-up form does not display its captcha, so new accounts cannot be created and no API key can be issued. Until the portal is fixed, the fetch cannot run and the bundled 2023 snapshot is the only data available. An existing key should still work, but no live fetch has been run yet.
-
-Open [API documentation](http://127.0.0.1:8000/api/docs/) or [a PIN lookup](http://127.0.0.1:8000/api/v1/pincodes/110001/).
-
-## API
-
-All data endpoints are read-only and public. Writes happen only through the fetch management command.
-
-| Endpoint | Behavior |
-| --- | --- |
-| `GET /api/v1/pincodes/110001/` | Matching offices, paginated; malformed PIN is 400, absent PIN is 404 |
-| `GET /api/v1/offices/?search=market` | Search office names and districts |
-| `GET /api/v1/offices/?state=Delhi&district=New%20Delhi` | Case-insensitive exact filters; combine with search or pincode |
-| `GET /api/v1/states/` | States with their office counts |
-| `GET /api/v1/districts/?state=Delhi` | Districts with office counts; `state` is optional and case-insensitive |
-| `GET /api/v1/dataset/` | Source, source date, SHA256, import timestamp and counts; 404 before the first fetch |
-| `GET /api/schema/` | Generated OpenAPI schema |
-| `GET /api/docs/` | Interactive Swagger documentation (UI assets loaded from a CDN) |
-| `GET /health/` | Process/database connectivity; does not assert dataset freshness |
-
-Lists return `count`, `next`, `previous`, and `results`, with 25 items per page. Follow `next` to retrieve further matches. Search requires 2–100 characters. An empty list is valid when filters match nothing or before the first fetch.
-
-```json
-{
-  "count": 1,
-  "next": null,
-  "previous": null,
-  "results": [
-    {
-      "pincode": "400001",
-      "office_name": "Example Office",
-      "district": "Example District",
-      "state": "Example State",
-      "circle": "Example Circle",
-      "region": "Example Region",
-      "division": "Example Division",
-      "office_type": "HO",
-      "delivery": "Delivery",
-      "latitude": 18.93,
-      "longitude": 72.83
-    }
-  ]
-}
-```
-
-The office above shows the response shape; its values are illustrative. `latitude` and `longitude` are passed through as published. They are `null` when the source value is missing or not a valid coordinate. The upstream data is known to contain some points outside India, so treat coordinates as approximate.
-
-## Fetching the dataset
-
-With `DATA_GOV_IN_API_KEY` set in your shell (see [Quick start](#quick-start)):
+**With Docker.** These commands are the same in bash, zsh, PowerShell, cmd and Git Bash:
 
 ```sh
-uv run python manage.py fetch_postal_data --dry-run
-uv run python manage.py fetch_postal_data
+docker build -t bharat-post-dir:local .
+docker run -d --rm --name app-demo -p 127.0.0.1:18000:8000 bharat-post-dir:local
 ```
 
-The command reads the key only from `DATA_GOV_IN_API_KEY`, never from a command-line argument, so it does not appear in process listings. It pages through the API (`--page-size`, default 1000) and retries transient gateway errors. It refuses a download that is shorter than the total the API reports. `--resource` selects another OGD resource ID with the same fields.
+Then open [127.0.0.1:18000](http://127.0.0.1:18000/). Run `docker stop app-demo` when finished. New to Docker on Windows? See [docs/docker-windows.md](docs/docker-windows.md).
 
-The importer validates the complete download before writing. It keeps six-digit PINs as strings, collapses identical records, rejects conflicting identities and refuses empty snapshots. Office identity is PIN + state + district + office name (case-insensitive during import). A failed fetch leaves the current directory untouched. A successful fetch replaces the entire directory and metadata in one transaction. Repeating a fetch that returns identical data is a no-op. Database-generated IDs are deliberately not exposed as stable public identifiers. The database itself does not enforce office uniqueness, so a database built from another snapshot may hold repeated identities; the fetch still rejects them.
+Both run in **production mode** by default: no debug pages, and a random secret key created once next to the database. **Contributor mode** is opt-in with `DJANGO_DEBUG=true`; it shows Django's debug pages and saves uploaded datasets so you can share them.
 
-Provenance is recorded from the source itself. The source is the API resource URL (never the key). The source date is the API's reported `updated_date` and is left empty if the API does not report one. The SHA256 covers the downloaded records.
-
-Upstream updates the directory roughly monthly. Refresh by re-running the command, for example from a scheduled job. If upstream publishes conflicting records, the fetch fails and lists them, and the previous data stays in service.
-
-## Architecture
-
-- `config/`: settings, URL routing, WSGI entrypoint.
-- `postal/models.py`: current dataset metadata and indexed office records.
-- `postal/importer.py`: API download, validation, duplicate detection and atomic replacement.
-- `postal/management/commands/`: operator-only fetch entrypoint.
-- `postal/serializers.py` and `views.py`: validation, read-only API and generated schema.
-- `tests/`: synthetic API-shaped fixtures (no network), fetch/rollback regressions, API behavior.
-
-The design deliberately keeps one directory snapshot, no user accounts, and no runtime dependency on the upstream API. SQLite runs in WAL mode, so reads continue during a replacement. Writers use immediate transactions, so concurrent fetches are serialized. PIN lookup uses an indexed exact match. Place search uses substring matching; it is not fuzzy search and has not been benchmarked at production traffic levels. Django 5.2 is an [LTS release](https://docs.djangoproject.com/en/5.2/releases/5.2/).
-
-## Configuration
-
-Environment variables are read by Django. `.env` files are not automatically loaded by Django; use `uv run --env-file .env ...` if you create one from `.env.example`.
-
-| Variable | Local default / purpose |
+| Shell | Contributor mode |
 | --- | --- |
-| `DJANGO_DEBUG` | `true`; must be `false` on a public deployment |
-| `DJANGO_SECRET_KEY` | Development-only fallback; provide a generated secret in production |
-| `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1]`; comma-separated hostnames |
-| `SQLITE_PATH` | `db.sqlite3` in the repository; `/data/bharat.sqlite3` in the container |
-| `DATA_GOV_IN_API_KEY` | Required only by `fetch_postal_data` |
-| `TRUST_PROXY_HTTPS` | `false`; enable only behind a trusted TLS proxy that strips incoming forwarding headers |
+| bash, zsh, Git Bash | `DJANGO_DEBUG=true uv run python manage.py runserver` |
+| PowerShell | `$env:DJANGO_DEBUG = "true"`, then `uv run python manage.py runserver` |
+| cmd | `set DJANGO_DEBUG=true`, then `uv run python manage.py runserver` |
 
-Only the bundled `db.sqlite3` is tracked; other databases and SQLite's `-wal`/`-shm` files are gitignored. Committing a refreshed `db.sqlite3` adds its full size to Git history each time.
+## Using it
 
-## Validation
+### The lookup page
+
+`/` is a server-rendered search page. Enter a 6-digit PIN or at least 2 characters of an office or district name. Every page shows the data's source, its source date (exact, approximate such as "On or before June 2023", or "not recorded"), when it was loaded and how many offices it has.
+
+<img src="docs/images/search-delhi.png" width="1280" alt="Search results for Delhi: 544 results, page 1 of 22, in a table of office, PIN, district, state, type, delivery and division.">
+
+Each search, results page or error costs **one HTTP request**: the CSS is inline, and there is no JavaScript, web font, image or external asset. Each lookup uses three database queries. The page is built for keyboard and screen-reader use: a skip link, a labelled search box with its hint and errors linked through `aria-describedby` and `aria-invalid`, "Error:" in the page title when input is rejected, captioned result tables with row and column headers, visible focus outlines, light and dark colour schemes, and a layout that stacks on phones.
+
+<img src="docs/images/phone.png" width="390" alt="The lookup page on a phone: the data panel's labels and values stacked, the search box with 110001, and the start of 23 results.">
+
+### The API
+
+All endpoints are read-only and public; no key or account is needed. Lists are paginated, 25 per page.
 
 ```sh
-uv run ruff check .
-uv run ruff format --check .
+curl http://127.0.0.1:8000/api/v1/pincodes/110001/
+curl "http://127.0.0.1:8000/api/v1/offices/?search=market&state=Delhi"
+curl http://127.0.0.1:8000/api/v1/states/
+curl http://127.0.0.1:8000/api/v1/dataset/
+```
+
+A PIN is a six-character string and can map to many offices: `110001` returns 23. The [API reference](docs/api.md) lists every endpoint, filter and field, and `/api/docs/` is the interactive documentation.
+
+### The whole directory
+
+`/api/v1/export/` returns every office and the dataset's details in one streamed JSON file. It is 1.4 MB gzipped (42.9 MB uncompressed), named after its source date and SHA256, and its ETag means an unchanged directory is never downloaded twice:
+
+```sh
+curl -OJ --compressed http://127.0.0.1:8000/api/v1/export/
+```
+
+Without a running server, `uv run python manage.py export_directory` writes the same file, gzipped. Each release also attaches it, with `db.sqlite3` and their SHA256 sums.
+
+## Use it in your application
+
+- **Call the API** from any language: it is plain JSON over HTTP with an OpenAPI schema at `/api/schema/`, so you can generate a client.
+- **Run the Docker image** next to your application. It bundles the directory, applies its migrations on start, and needs no database server or other service.
+- **Take the export** if you only need the data: one JSON file with every office, to load into your own database or ship with your application.
+
+## Your own dataset
+
+On a local clone, the **change source** link on the home page lets you load your own CSV or JSON file: the official CSV layout, a data.gov.in API response, a list of offices, or bharat-post-dir's own export. The whole file is validated before anything changes. In the default mode an upload is temporary and only your browser sees it; in contributor mode it replaces `db.sqlite3`, and the page shows how to share it back as a pull request or a published fork.
+
+The change-source page has no login, so it is off in the Docker image and must stay off on any hosted site. To use your own dataset, run bharat-post-dir locally or deploy it yourself. The details are in [docs/datasets.md](docs/datasets.md), which also covers fetching the official directory from data.gov.in with `fetch_postal_data`.
+
+## The data
+
+The bundled directory is the project's 2023 snapshot, verified by the project maintainer: 155,599 offices, with a source date of on or before June 2023. Each office has its PIN, name, type (head, sub or branch office), whether it delivers mail, district, state, and India Post circle, region and division. Known quirks:
+
+- It has no coordinates. Datasets that have them may include points outside India, so treat coordinates as approximate.
+- 3 offices are listed twice with different details. Both versions are kept, because government data can list an office twice legitimately.
+- Its original upstream source and license were not recorded in 2023.
+- It lists post offices and whether each one delivers mail. It cannot tell you whether a particular street address exists.
+
+Every page and `/api/v1/dataset/` show the source, source date, load time, SHA256 and counts of the current data; bharat-post-dir never invents a date. See [docs/datasets.md](docs/datasets.md) for the fields and provenance rules.
+
+## Deploy it yourself
+
+Run the Docker image as one container with a persistent `/data` volume behind a TLS reverse proxy. [docs/deployment.md](docs/deployment.md) walks through it with Caddy, and covers the settings, backups, updates and rollback. The steps were verified end to end on 26 September 2026 in a Linux sandbox, with a local certificate in place of a real domain.
+
+bharat-post-dir uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running it publicly after that.
+
+## For developers
+
+```text
+config/                 settings, URL routing, WSGI entrypoint
+postal/models.py        dataset metadata and indexed office records
+postal/importer.py      fetching, CSV and JSON parsing, validation, atomic replacement
+postal/uploads.py       temporary per-browser uploads
+postal/queries.py       PIN and search rules shared by the API and the lookup page
+postal/serializers.py   API fields and query validation
+postal/views.py         the read-only API
+postal/export.py        the streamed, versioned whole-directory download
+postal/web.py           the lookup and change-source pages (templates in postal/templates/)
+postal/management/      the fetch_postal_data command
+tests/                  synthetic fixtures; tests never reach the network
+```
+
+The main checks, which CI also runs on every push and pull request along with a Docker build:
+
+```sh
+uv sync --frozen
+uv run ruff check . && uv run ruff format --check .
 uv run pytest
-uv run python manage.py check
 uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py spectacular --validate --fail-on-warn --file schema.yml
 ```
 
-Tests cover one-to-many PIN lookup, input validation, filters, pagination, state/district listings, read-only routes, provenance, API pagination, truncated or malformed downloads, retries, duplicate/conflict handling, idempotence, dry runs and rollback. They never contact data.gov.in.
+[`AGENTS.md`](AGENTS.md) lists the rules the code keeps. [docs/performance.md](docs/performance.md) has measured response times, and [docs/deployment.md](docs/deployment.md#configuration) every setting.
 
-## Run with Docker
+## Where this could go
 
-These commands are identical in bash, zsh, PowerShell, cmd and Git Bash. From the repository root, once Docker's engine is running:
+bharat-post-dir is finished, but there is plenty of room for whoever picks it up:
 
-```sh
-docker build -t bharat:local .
-docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat:local
-```
+- **Monthly auto-refresh** from data.gov.in once its sign-up works again (it was broken on 26 September 2026), with a changelog of what changed in the data.
+- **A static JSON API** on GitHub Pages or a CDN: one file per PIN, no server at all.
+- **Lookup packages** for npm and PyPI that bundle the directory.
+- **A data quality report** for each release: offices without coordinates, points outside India, repeated offices.
+- **Resolving the bundled data's origin and license**, or replacing it with an official download.
 
-The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
+## Contributing, license and credit
 
-- [health](http://127.0.0.1:18000/health/) should report `ok`
-- [dataset](http://127.0.0.1:18000/api/v1/dataset/) should report `row_count: 155599`
-- [PIN 110001](http://127.0.0.1:18000/api/v1/pincodes/110001/) should return 23 offices
-- [API documentation](http://127.0.0.1:18000/api/docs/)
+bharat-post-dir is complete as of v1.0.0 and not actively maintained: issues and pull requests may go unanswered, so fork it freely. The code is under the [MIT License](LICENSE) with no extra conditions. Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
 
-When finished, run `docker stop bharat-demo`; `--rm` removes the container.
+If you update the dataset, please share it back, with a pull request or by publishing your fork; [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how. A mention is appreciated, never required.
 
-Each new container starts from the bundled database. To keep data you fetch inside the container, add a named volume; on first use, Docker seeds an empty named volume with the bundled database. Set `DATA_GOV_IN_API_KEY` in your shell as shown in [Quick start](#quick-start). `-e DATA_GOV_IN_API_KEY` with no value passes it through without the key appearing in the command:
-
-```sh
-docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat:local
-docker exec -e DATA_GOV_IN_API_KEY bharat-demo python manage.py fetch_postal_data
-```
-
-An existing volume keeps its own data and is not updated when you rebuild the image. Remove it with `docker volume rm bharat-data` to go back to the bundled database.
-
-The image puts its virtualenv on `PATH`, so container commands are written as `python manage.py ...`. Avoid passing arguments that start with `/` (such as `/app/.venv/bin/python`): Git Bash on Windows rewrites them into Windows paths.
-
-Verified on 26 September 2026 with Docker Desktop (Engine 29.8.0, Compose 5.5.1) on WSL 2.7.14. The image build, startup migrations, health, dataset, PIN lookup, district filter, search, documentation, write rejection (405), non-root user, named-volume seeding and `docker exec` from PowerShell and Git Bash all passed. These are tested versions, not minimum requirements.
-
-### Installing Docker on Windows
-
-On macOS or Linux, install Docker Desktop or Docker Engine from the [official documentation](https://docs.docker.com/get-started/get-docker/). On Windows, install Docker Desktop with the WSL 2 backend. See the [official Windows installation guide](https://docs.docker.com/desktop/setup/install/windows-install/) for current system requirements.
-
-1. Open PowerShell **as Administrator** and install WSL without an additional Linux distribution:
-
-   ```powershell
-   wsl --install --no-distribution
-   ```
-
-   Restart Windows if prompted. Docker manages its own Linux environment; Ubuntu is not required for these commands.
-
-2. Install Docker Desktop using WinGet, or use the installer linked in the official guide:
-
-   ```powershell
-   winget install --id Docker.DockerDesktop --exact --source winget
-   ```
-
-   Select the WSL 2 backend if prompted. Open Docker Desktop, complete its initial setup, and wait for the engine to start.
-
-3. Open a new PowerShell window and verify both the client and engine:
-
-   ```powershell
-   wsl --version
-   docker --version
-   docker version
-   docker compose version
-   ```
-
-   `docker version` should display both **Client** and **Server** sections. A client version alone does not confirm the engine is running.
-
-If `docker` is not recognized, reopen the terminal after installation. For a per-user installation, check the executable directly:
-
-```powershell
-& "$env:LOCALAPPDATA\Programs\DockerDesktop\resources\bin\docker.exe" version
-```
-
-If the error mentions a missing `dockerDesktopLinuxEngine` pipe, open Docker Desktop and wait for startup. If WSL is missing, complete step 1; if it needs an update, run `wsl --update` in Administrator PowerShell and restart Docker Desktop.
-
-
-## CI and release delivery
-
-GitHub Actions installs the frozen lockfile, checks formatting/lint, runs tests, validates migrations/OpenAPI and builds the container. A `v*` Git tag publishes a versioned image to `ghcr.io/<owner>/<repository>` only after these checks pass. CI does not contact data.gov.in. No image has been published yet.
-
-The Docker image uses Gunicorn and an unprivileged user, and stores the SQLite database in `/data`. Build with `docker build -t bharat:local .`.
-
-Hosting is out of scope for now; the project is meant to run locally, with or without Docker. When hosting is needed, use one container with a persistent volume at `/data`: SQLite must not be shared across hosts or network filesystems. Also set `DJANGO_DEBUG=false`, a generated `DJANGO_SECRET_KEY` and `DJANGO_ALLOWED_HOSTS`, put TLS ingress in front, and back up `/data/bharat.sqlite3` before migrations.
-
-## Next milestones
-
-- Run the first live fetch from data.gov.in once an API key is available (blocked by the broken sign-up captcha; see [Quick start](#quick-start)).
-- Add a small accessible lookup interface with source/freshness labels.
-- Add versioned data exports and measure query/fetch performance on the full directory.
-- Choose a hosting platform when a public deployment is needed.
-
-## License
-
-The code is released under the [MIT License](LICENSE). Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
+Created by Akash Damle ([@code-kasha](https://github.com/code-kasha)).

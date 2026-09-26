@@ -1,6 +1,6 @@
 [project]
-name = "bharat"
-version = "0.3.0"
+name = "bharat-post-dir"
+version = "1.0.0"
 description = "An Indian postal directory API with reproducible dataset imports."
 license = "MIT"
 license-files = ["LICENSE"]

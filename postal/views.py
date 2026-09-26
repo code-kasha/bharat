@@ -1,13 +1,12 @@
-import re
-
 from django.db import connection
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 
 from postal.models import Dataset, PostOffice
+from postal.queries import is_pin, offices_for_pin, search_offices
 from postal.serializers import (
     DatasetSerializer,
     DistrictQuerySerializer,
@@ -38,7 +37,7 @@ class OfficeListView(ListAPIView):
                 lookup = key if key == "pincode" else f"{key}__iexact"
                 result = result.filter(**{lookup: value})
         if term := query.validated_data.get("search"):
-            result = result.filter(Q(office_name__icontains=term) | Q(district__icontains=term))
+            result = result & search_offices(term)
         return result
 
 
@@ -48,9 +47,9 @@ class PinLookupView(ListAPIView):
 
     def get_queryset(self):
         pincode = self.kwargs["pincode"]
-        if not re.fullmatch(r"[1-9][0-9]{5}", pincode):
+        if not is_pin(pincode):
             raise ValidationError({"pincode": "Expected a six-digit Indian PIN."})
-        result = super().get_queryset().filter(pincode=pincode)
+        result = offices_for_pin(pincode)
         if not result.exists():
             raise NotFound("PIN not found in the imported dataset.")
         return result

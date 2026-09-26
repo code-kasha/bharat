@@ -40,6 +40,7 @@ class Command(BaseCommand):
         self.stdout.write(
             self.style.SUCCESS(
                 f"{action}: {len(parsed.offices)} offices, {parsed.duplicates} duplicates, "
+                f"{parsed.repeated_identities} offices listed more than once (kept), "
                 f"0 rejected records. Source date {parsed.source_date or 'not reported'}. "
                 f"SHA256 {parsed.checksum}"
             )

@@ -6,10 +6,14 @@ class Dataset(models.Model):
 
     source = models.CharField(max_length=500)
     source_date = models.DateField(null=True, blank=True)
+    # Approximate provenance ("On or before June 2023") when no exact date is known.
+    source_period = models.CharField(max_length=100, blank=True)
     checksum = models.CharField(max_length=64)
     imported_at = models.DateTimeField(auto_now=True)
     row_count = models.PositiveIntegerField()
     duplicate_count = models.PositiveIntegerField(default=0)
+    # Offices listed more than once with different details; all their rows are kept.
+    repeated_identity_count = models.PositiveIntegerField(default=0)
 
 
 class PostOffice(models.Model):

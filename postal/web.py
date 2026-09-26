@@ -1,0 +1,184 @@
+import shlex
+
+from django import forms
+from django.conf import settings
+from django.core.paginator import Paginator
+from django.http import Http404, HttpResponse
+from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
+
+from postal import uploads
+from postal.importer import ImportFailure, parse_upload, replace_dataset
+from postal.models import Dataset
+from postal.queries import is_pin, offices_for_pin, search_offices
+
+PAGE_SIZE = 25
+
+
+def lookup(request):
+    """Server-rendered search: one request per page, no scripts or external assets."""
+    upload = uploads.active(request)
+    with uploads.reading(upload) as using:
+        response = _lookup(request, upload, using)
+    if upload is None and bool(request.COOKIES.get(uploads.COOKIE)):
+        # The upload expired or was removed: fall back to the default dataset and say so.
+        response.delete_cookie(uploads.COOKIE)
+    return response
+
+
+def _lookup(request, upload, using):
+    query = request.GET.get("q", "").strip()
+    context = {
+        "query": query,
+        "dataset": Dataset.objects.using(using).filter(pk=1).first(),
+        "upload": upload,
+        "upload_expired": upload is None and bool(request.COOKIES.get(uploads.COOKIE)),
+        "allow_source_change": settings.ALLOW_SOURCE_CHANGE,
+        "updated": request.GET.get("updated") == "1",
+    }
+    if context["updated"] and settings.SAVE_UPLOADS and upload is None and context["dataset"]:
+        context["share"] = share_details(context["dataset"])
+    if not query:
+        return render(request, "postal/lookup.html", context)
+    if query.isdigit():
+        if not is_pin(query):
+            context["error"] = "A PIN has exactly 6 digits and cannot start with 0."
+        else:
+            offices = offices_for_pin(query, using)
+    elif not 2 <= len(query) <= 100:
+        context["error"] = "Enter a 6-digit PIN, or 2 to 100 characters of a place name."
+    else:
+        offices = search_offices(query, using)
+    if "error" in context:
+        return render(request, "postal/lookup.html", context, status=400)
+    context["page"] = Paginator(offices, PAGE_SIZE).get_page(request.GET.get("page"))
+    return render(request, "postal/lookup.html", context)
+
+
+def share_details(dataset):
+    """Git commands and a pull request description for sharing a saved dataset."""
+    if dataset.source_date:
+        when = f"Source date: {dataset.source_date:%Y-%m-%d}"
+    elif dataset.source_period:
+        when = f"Approximate source date: {dataset.source_period}"
+    else:
+        when = "Source date: not recorded"
+    branch = f"dataset-{dataset.checksum[:12]}"
+    commands = [f"git switch -c {branch}"]
+    bundled = settings.BASE_DIR / "db.sqlite3"
+    if settings.DATABASE_PATH.resolve() != bundled.resolve():
+        commands.append(f"cp {shlex.quote(str(settings.DATABASE_PATH))} db.sqlite3")
+    commands += [
+        "git add db.sqlite3",
+        f"git commit -m {shlex.quote(f'Update dataset: {dataset.source}')}",
+        f"git push -u origin {branch}",
+    ]
+    description = "\n".join(
+        [
+            "Updated dataset",
+            "",
+            f"- Source: {dataset.source}",
+            f"- {when}",
+            f"- Offices: {dataset.row_count}"
+            f" ({dataset.duplicate_count} exact repeated rows merged)",
+            "- Offices listed more than once with different details (kept):"
+            f" {dataset.repeated_identity_count}",
+            f"- SHA256 of the imported data: {dataset.checksum}",
+            f"- Loaded: {dataset.imported_at:%Y-%m-%d}",
+        ]
+    )
+    return {
+        "commands": "\n".join(commands),
+        "description": description,
+        "repository": settings.REPOSITORY_URL,
+    }
+
+
+class SourceForm(forms.Form):
+    file = forms.FileField(error_messages={"required": "Choose a CSV or JSON file to upload."})
+    # Optional only because a bharat-post-dir export carries its own source; checked in clean().
+    source = forms.CharField(max_length=500, required=False)
+    source_date = forms.DateField(
+        required=False, error_messages={"invalid": "Enter a date like 2025-06-30."}
+    )
+    source_period = forms.CharField(max_length=100, required=False)
+
+    def clean_file(self):
+        upload = self.cleaned_data["file"]
+        if upload.size > settings.SOURCE_UPLOAD_MAX_BYTES:
+            limit = settings.SOURCE_UPLOAD_MAX_BYTES // (1024 * 1024)
+            raise forms.ValidationError(f"The file is larger than {limit} MB.")
+        return upload
+
+    def clean(self):
+        data = super().clean()
+        if data.get("source_date") and data.get("source_period"):
+            self.add_error("source_period", "Give an exact date or an approximate one, not both.")
+        if self.errors:
+            return data
+        try:
+            self.parsed, carried = parse_upload(data["file"].read())
+        except ImportFailure as exc:
+            self.add_error("file", str(exc))
+            return data
+        # A bharat-post-dir export says where its data came from; what the uploader types wins.
+        if not data["source"].strip():
+            data["source"] = carried.get("source", "")
+        if not data["source_date"] and not data["source_period"].strip():
+            data["source_date"] = carried.get("source_date")
+            data["source_period"] = "" if data["source_date"] else carried.get("source_period", "")
+        if not data["source"].strip():
+            self.add_error("source", "Say where the data came from.")
+        elif len(data["source"]) > 500 or len(data["source_period"]) > 100:
+            self.add_error("source", "The file's source details are too long; type shorter ones.")
+        self.parsed.source_date = data["source_date"]
+        return data
+
+
+def change_source(request):
+    """Local-only: validate an uploaded CSV fully, then save it or keep it for this browser.
+
+    Contributor mode (SAVE_UPLOADS) replaces the directory. Otherwise the upload goes to a
+    temporary file that only this browser's lookups read; the database is untouched.
+    """
+    if not settings.ALLOW_SOURCE_CHANGE:
+        raise Http404("Changing the source is disabled.")
+    form = SourceForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        details = {
+            "source": form.cleaned_data["source"].strip(),
+            "source_period": form.cleaned_data["source_period"].strip(),
+        }
+        if settings.SAVE_UPLOADS:
+            replace_dataset(form.parsed, **details)
+            return redirect("/?updated=1")
+        previous = uploads.cookie_token(request)
+        token = uploads.store(form.parsed, **details)
+        uploads.discard(previous)
+        response = redirect("/?updated=1")
+        uploads.set_cookie(response, token)
+        return response
+    context = {
+        "form": form,
+        "max_mb": settings.SOURCE_UPLOAD_MAX_BYTES // (1024 * 1024),
+        "saves": settings.SAVE_UPLOADS,
+        "hours": settings.TEMPORARY_UPLOAD_HOURS,
+    }
+    return render(request, "postal/source.html", context, status=400 if form.errors else 200)
+
+
+@require_POST
+def default_dataset(request):
+    """Forget this browser's temporary upload and go back to the default dataset."""
+    uploads.discard(uploads.cookie_token(request))
+    response = redirect("/")
+    response.delete_cookie(uploads.COOKIE)
+    return response
+
+
+def favicon(request):
+    # Some browsers request /favicon.ico regardless of the page's icon; a cached empty
+    # response stops a 404 round trip on every page.
+    response = HttpResponse(status=204)
+    response["Cache-Control"] = "public, max-age=31536000, immutable"
+    return response

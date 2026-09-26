@@ -1,4 +1,6 @@
+import csv
 import hashlib
+import io
 import json
 import math
 import re
@@ -9,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from django.db import transaction
+from django.db import DEFAULT_DB_ALIAS, connections, transaction
 
 from postal.models import Dataset, PostOffice
 
@@ -28,6 +30,13 @@ FIELDS = {
     "district": "district",
     "statename": "state",
 }
+# bharat-post-dir's own field names (the export and API), normalized like the keys above.
+ALIASES = {
+    "state": "statename",
+    "circle": "circlename",
+    "region": "regionname",
+    "division": "divisionname",
+}
 COORDINATES = {"latitude": 90, "longitude": 180}
 
 
@@ -41,6 +50,8 @@ class ParsedDataset:
     offices: list
     duplicates: int
     source_date: date | None = None
+    # Offices (same PIN, state, district and name) listed more than once with different details.
+    repeated_identities: int = 0
 
 
 @dataclass
@@ -51,7 +62,7 @@ class Snapshot:
 
 def _get_json(url, *, attempts=4, timeout=60):
     """GET a JSON document, retrying transient gateway and network failures."""
-    request = Request(url, headers={"Accept": "application/json", "User-Agent": "bharat"})
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "bharat-post-dir"})
     for attempt in range(1, attempts + 1):
         try:
             with urlopen(request, timeout=timeout) as response:
@@ -107,9 +118,14 @@ def _coordinate(value, limit):
     return number if math.isfinite(number) and -limit <= number <= limit else None
 
 
-def parse_records(records, *, source_date=None):
-    """Validate the entire snapshot before changing the active directory."""
-    offices = {}
+def parse_records(records, *, source_date=None, position="record {}".format):
+    """Validate the entire snapshot before changing the active directory.
+
+    Exact repeated rows are merged. Differing rows for the same office identity are all kept:
+    government data can list an office twice legitimately, so they are counted, not rejected.
+    """
+    offices = []
+    variants = {}
     duplicates = 0
     errors = []
     rejected = 0
@@ -118,10 +134,15 @@ def parse_records(records, *, source_date=None):
             raw = {}
         else:
             raw = {re.sub(r"[\s_]", "", str(key)).lower(): value for key, value in record.items()}
+            for alias, key in ALIASES.items():
+                if alias in raw and key not in raw:
+                    raw[key] = raw.pop(alias)
         values = {field: str(raw.get(key) or "").strip() for key, field in FIELDS.items()}
         problem = None
         if missing := sorted(key for key in FIELDS if key not in raw):
             problem = f"missing fields: {', '.join(missing)}"
+        elif nested := sorted(key for key in FIELDS if isinstance(raw[key], dict | list)):
+            problem = f"fields must be text, not lists or objects: {', '.join(nested)}"
         elif not re.fullmatch(r"[1-9][0-9]{5}", values["pincode"]):
             problem = "PIN must contain six digits and cannot start with zero"
         else:
@@ -134,18 +155,17 @@ def parse_records(records, *, source_date=None):
         key = tuple(
             values[field].casefold() for field in ("pincode", "state", "district", "office_name")
         )
-        if not problem and key in offices:
-            if offices[key] != values:
-                problem = "conflicting records for the same office identity"
-            else:
-                duplicates += 1
-                continue
         if problem:
             rejected += 1
             if len(errors) < 10:
-                errors.append(f"record {number}: {problem}")
-        else:
-            offices[key] = values
+                errors.append(f"{position(number)}: {problem}")
+            continue
+        seen = variants.setdefault(key, [])
+        if values in seen:
+            duplicates += 1
+            continue
+        seen.append(values)
+        offices.append(values)
     if rejected:
         raise ImportFailure(f"Rejected {rejected} record(s); no data changed. " + "; ".join(errors))
     if not offices:
@@ -153,30 +173,132 @@ def parse_records(records, *, source_date=None):
     canonical = json.dumps(records, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
     return ParsedDataset(
         hashlib.sha256(canonical.encode()).hexdigest(),
-        list(offices.values()),
+        offices,
         duplicates,
         source_date,
+        sum(len(seen) > 1 for seen in variants.values()),
     )
 
 
-@transaction.atomic
-def replace_dataset(parsed, *, source):
+def _decode(raw):
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        message = "The file is not UTF-8 text. Save it as CSV UTF-8 (or UTF-8 JSON) and try again."
+        raise ImportFailure(message) from exc
+
+
+def _finish(parsed, raw):
+    # Record the file's own hash so users can check it with any SHA256 tool.
+    parsed.checksum = hashlib.sha256(raw).hexdigest()
+    return parsed
+
+
+def _parse_csv_text(text, raw):
+    try:
+        reader = csv.DictReader(io.StringIO(text, newline=""))
+        rows = []
+        for row in reader:
+            if None in row or None in row.values():
+                raise ImportFailure(
+                    f"Line {reader.line_num} has a different number of fields than the header; "
+                    "no data changed."
+                )
+            rows.append(row)
+    except csv.Error as exc:
+        raise ImportFailure(f"The file is not valid CSV: {exc}") from exc
+    # Line 1 is the header, so record N is on line N + 1 of the file.
+    return _finish(parse_records(rows, position=lambda number: f"line {number + 1}"), raw)
+
+
+def parse_csv(raw):
+    """Validate an uploaded CSV (the directory's column layout) without writing anything."""
+    return _parse_csv_text(_decode(raw), raw)
+
+
+JSON_SHAPES = (
+    'bharat-post-dir\'s export ({"dataset": ..., "offices": [...]}), a data.gov.in response '
+    '({"records": [...]}) or a list of offices'
+)
+
+
+def _export_details(dataset):
+    """Provenance carried by a bharat-post-dir export, for form fields left empty."""
+    if not isinstance(dataset, dict):
+        return {}
+    details = {}
+    for field in ("source", "source_period"):
+        if isinstance(dataset.get(field), str) and dataset[field].strip():
+            details[field] = dataset[field].strip()
+    if isinstance(dataset.get("source_date"), str):
+        try:
+            details["source_date"] = date.fromisoformat(dataset["source_date"])
+        except ValueError:
+            pass
+    return details
+
+
+def parse_json(raw, text=None):
+    """Validate an uploaded JSON file in any accepted shape; returns (parsed, export details)."""
+    try:
+        document = json.loads(_decode(raw) if text is None else text)
+    except json.JSONDecodeError as exc:
+        raise ImportFailure(
+            f"The file is not valid JSON: {exc.msg} at line {exc.lineno}, column {exc.colno}."
+        ) from exc
+    details = {}
+    if isinstance(document, list):
+        records = document
+    elif isinstance(document, dict) and isinstance(document.get("offices"), list):
+        records = document["offices"]
+        details = _export_details(document.get("dataset"))
+    elif isinstance(document, dict) and isinstance(document.get("records"), list):
+        records = document["records"]
+    else:
+        raise ImportFailure(f"Unrecognized JSON. Upload {JSON_SHAPES}.")
+    return _finish(parse_records(records), raw), details
+
+
+def parse_upload(raw):
+    """Validate an uploaded CSV or JSON file, detected from its content, without writing.
+
+    Returns the parsed dataset and any provenance the file itself carries (an export).
+    """
+    text = _decode(raw)
+    if text.lstrip()[:1] in ("{", "["):
+        return parse_json(raw, text)
+    return _parse_csv_text(text, raw), {}
+
+
+def replace_dataset(parsed, *, source, source_period="", using=DEFAULT_DB_ALIAS):
+    """Swap in a validated dataset; `using` also targets a temporary upload's own database."""
     # SQLite's IMMEDIATE transactions (see settings) serialize concurrent imports.
-    current, _ = Dataset.objects.get_or_create(pk=1, defaults={"source": source, "row_count": 0})
-    if (current.checksum, current.source, current.source_date) == (
-        parsed.checksum,
-        source,
-        parsed.source_date,
-    ):
-        return False
-    PostOffice.objects.all().delete()
-    PostOffice.objects.bulk_create(
-        [PostOffice(**office) for office in parsed.offices], batch_size=1000
-    )
-    current.source = source
-    current.source_date = parsed.source_date
-    current.checksum = parsed.checksum
-    current.row_count = len(parsed.offices)
-    current.duplicate_count = parsed.duplicates
-    current.save()
+    with transaction.atomic(using=using):
+        current, _ = Dataset.objects.db_manager(using).get_or_create(
+            pk=1, defaults={"source": source, "row_count": 0}
+        )
+        if (current.checksum, current.source, current.source_date, current.source_period) == (
+            parsed.checksum,
+            source,
+            parsed.source_date,
+            source_period,
+        ):
+            return False
+        offices = PostOffice.objects.db_manager(using)
+        offices.all().delete()
+        offices.bulk_create([PostOffice(**office) for office in parsed.offices], batch_size=1000)
+        current.source = source
+        current.source_date = parsed.source_date
+        current.source_period = source_period
+        current.checksum = parsed.checksum
+        current.row_count = len(parsed.offices)
+        current.duplicate_count = parsed.duplicates
+        current.repeated_identity_count = parsed.repeated_identities
+        current.save(using=using)
+    # Fold the write-ahead log into the database file, so the file alone (for example a
+    # committed db.sqlite3) holds the new directory. SQLite cannot do this mid-transaction.
+    connection = connections[using]
+    if not connection.in_atomic_block:
+        with connection.cursor() as cursor:
+            cursor.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     return True

@@ -35,3 +35,10 @@ def no_network(monkeypatch):
         raise AssertionError("Tests must not reach data.gov.in")
 
     monkeypatch.setattr("postal.importer.urlopen", refuse)
+
+
+@pytest.fixture(autouse=True)
+def upload_dir(settings, tmp_path):
+    """Temporary uploads go to a per-test directory, never next to the real database."""
+    settings.TEMPORARY_UPLOAD_DIR = tmp_path / "uploads"
+    return settings.TEMPORARY_UPLOAD_DIR

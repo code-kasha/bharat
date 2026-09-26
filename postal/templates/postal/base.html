@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}bharat-post-dir{% endblock %}</title>
+{# An empty data-URI icon stops browsers from making a separate favicon request. #}
+<link rel="icon" href="data:,">
+<style>
+  :root { color-scheme: light dark; --fg: #1b1b1b; --bg: #fff; --muted: #4a4a4a; --line: #c8c8c8; --link: #0b5cad; --error: #b3261e; --ok: #1d6b35; --panel: #f3f4f6; }
+  @media (prefers-color-scheme: dark) {
+    :root { --fg: #f1f1f1; --bg: #121212; --muted: #c4c4c4; --line: #555; --link: #8ab8ff; --error: #ffb4ab; --ok: #8fd6a4; --panel: #1f1f1f; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 1rem/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: var(--fg); background: var(--bg); }
+  a { color: var(--link); }
+  :focus-visible { outline: 3px solid var(--link); outline-offset: 2px; }
+  .skip { position: absolute; left: -999px; }
+  .skip:focus { left: 1rem; top: 1rem; background: var(--bg); padding: .5rem; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  main, header, footer { max-width: 64rem; margin: 0 auto; padding: 1rem; }
+  h1 { margin: .5rem 0 0; font-size: 1.75rem; }
+  .muted { color: var(--muted); }
+  .hint { color: var(--muted); margin: 0; }
+  form { margin: 1.5rem 0; }
+  label { display: block; font-weight: 600; }
+  .field { margin-bottom: 1.25rem; }
+  .row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .5rem; }
+  input { flex: 1 1 16rem; font: inherit; padding: .5rem .75rem; border: 2px solid var(--fg); border-radius: 4px; background: var(--bg); color: var(--fg); }
+  .field input { display: block; width: 100%; max-width: 32rem; margin-top: .25rem; }
+  input[aria-invalid="true"] { border-color: var(--error); }
+  button { font: inherit; font-weight: 600; padding: .5rem 1.25rem; border: 2px solid var(--link); border-radius: 4px; background: var(--link); color: var(--bg); cursor: pointer; }
+  .error { color: var(--error); font-weight: 600; margin: .25rem 0 0; }
+  .notice { border-left: 4px solid var(--ok); padding: .5rem 1rem; background: var(--panel); }
+  .problem { border-left: 4px solid var(--error); padding: .5rem 1rem; background: var(--panel); }
+  .source { background: var(--panel); border-left: 4px solid var(--link); padding: .75rem 1rem; margin: 1rem 0; }
+  .source h2 { margin: 0 0 .5rem; font-size: 1rem; }
+  .source dl { display: grid; grid-template-columns: max-content 1fr; gap: .25rem 1rem; margin: 0; }
+  .source dt { font-weight: 600; }
+  .source dd { margin: 0; }
+  /* On narrow screens, a label column as wide as its longest label would squeeze the values. */
+  @media (max-width: 40rem) { .source dl { grid-template-columns: 1fr; gap: 0; } .source dd { margin-bottom: .5rem; } }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; }
+  caption { text-align: left; font-weight: 600; padding-bottom: .5rem; }
+  th, td { text-align: left; padding: .5rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  nav ul { list-style: none; display: flex; flex-wrap: wrap; gap: 1rem; padding: 0; }
+  code { font-size: .95em; }
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to main content</a>
+<header>
+  <h1>{% block heading %}bharat-post-dir{% endblock %}</h1>
+  {% block intro %}{% endblock %}
+</header>
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+<footer class="muted">
+  <p>Data is also available as <a href="/api/docs/">a JSON API</a>. bharat-post-dir lists post offices and whether each one delivers mail; it cannot tell you whether a particular street address exists.</p>
+</footer>
+</body>
+</html>
