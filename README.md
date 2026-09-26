@@ -91,6 +91,8 @@ A PIN is a six-character string and can map to many offices: `110001` returns 23
 curl -OJ --compressed http://127.0.0.1:8000/api/v1/export/
 ```
 
+Without a running server, `uv run python manage.py export_directory` writes the same file, gzipped. Each release also attaches it, with `db.sqlite3` and their SHA256 sums.
+
 ## Use it in your application
 
 - **Call the API** from any language: it is plain JSON over HTTP with an OpenAPI schema at `/api/schema/`, so you can generate a client.

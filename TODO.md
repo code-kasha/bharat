@@ -10,11 +10,14 @@ Pick up from here. Nothing below is started unless marked done.
 - Treat "Decisions already made" as settled; do not re-ask them.
 - After each task: run the checks from `AGENTS.md`, commit on `release-v1`, and mark the task DONE here.
 
-## Current state
+## Current state (updated 26 September 2026)
 
-- `origin/main` is at `ff2eb31`. **Done:** the lookup page, export, change-source page, `source_period` field, relabelled `db.sqlite3`, docs and stale-file cleanup are committed as `efc1544` on **`release-v1`** (pushed; 78 tests pass, lint, migrations and schema clean). Continue all tasks on `release-v1`.
-- `TODO.md` is committed on `release-v1` so cloud sessions can read it. Whether to keep it after v1.0.0 is undecided (ask).
-- README intro still links the write-up at `http://localhost:3000/projects/bharat-post-dir` (task 17).
+- The repository is **`code-kasha/bharat-post-dir`** (renamed from `code-kasha/bharat`; GitHub redirects the old name). `origin/main` is still at `ff2eb31`; all work is on **`release-v1`**, 23+ commits ahead with nothing on `main` to merge back.
+- **Tasks 1–13 are done**, including the local Docker run on Windows (task 8). **Task 14 is prepared** (version 1.0.0, `CHANGELOG.md`, release workflow); what remains is public: the pull request `release-v1` → `main`, the merge, and the `v1.0.0` tag. Then tasks 15, 17 and 16.
+- Checks: 119 tests pass; lint, format, migrations and the OpenAPI schema are clean; CI is green on every `release-v1` push.
+- Cloud environment notes: the network policy allows `pkg-containers.githubusercontent.com` (GHCR image layers) and `cdn.jsdelivr.net` (Swagger UI), added by the user. Docker Hub rate-limits anonymous pulls from the sandbox; pull through `mirror.gcr.io` there. The sandbox browser does not trust the proxy certificate.
+- `TODO.md` is committed on `release-v1` so any session can read it. Whether to keep it after v1.0.0 is undecided (ask).
+- The README intro links the write-up at `http://localhost:3000/projects/bharat-post-dir` until it is published (task 17).
 
 ## Decisions already made
 
@@ -68,7 +71,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Local checklist (Docker Desktop, no workarounds): first `git fetch origin && git switch release-v1 && git pull` (the repository is now `code-kasha/bharat-post-dir`; update an old clone with `git remote set-url origin https://github.com/code-kasha/bharat-post-dir.git`). Then `docker build -t bharat-post-dir:local .` and steps 1–4 of `docs/deployment.md` "Deploying it yourself", with `localhost` for the domain (`DJANGO_ALLOWED_HOSTS=localhost`, `DJANGO_CSRF_TRUSTED_ORIGINS=https://localhost`, Caddyfile site `localhost`). Open `https://localhost/` (accept or trust Caddy's local certificate): the heading reads bharat-post-dir, search `110001` gives 23 results, `/health/` is ok, `/api/v1/dataset/` shows 155599 offices and 3 repeated, `/source/` is 404, `/api/docs/` loads, and `/api/v1/export/` downloads `post-offices-undated-959693b760df.json`. Then `docker restart app` (data kept), and try the backup and rollback commands. On Windows, run the multi-line commands in Git Bash or put them on one line. Record the result here and in `docs/deployment.md`'s verification note.
    - No server or domain is available, so run the image exactly as the README's production instructions say: production mode, a volume, and a local Caddy proxy with HTTPS in front.
    - Check the lookup page, search, export, health, that `/source/` is off, and that data survives a restart. Report anything that needs a real domain to verify.
-9. **Checkpoint** — DONE. All checks pass locally (113 tests); CI green on every `release-v1` push through `3d529df`. README validation notes updated. CI runs on every push and pull request.
+9. **Checkpoint** — DONE. All checks passed locally (113 tests at the time; 119 now); CI green on every `release-v1` push through `3d529df`. README validation notes updated. CI runs on every push and pull request.
 10. **Rename the repository to `bharat-post-dir`** — DONE. Renamed on GitHub by the user; references updated (README clone URL, folder and image names, `REPOSITORY_URL`, `pyproject.toml` and regenerated `uv.lock`). Kept on purpose: container name `bharat`, volume `app-data` (renaming would orphan existing data), Django packages. The "memory note" lives outside this repository; update it on the machine that has it. (confirm with the user right before running it; it is public-facing)
    - `gh repo rename bharat-post-dir`; update the local `origin` remote. GitHub redirects old URLs, but update every reference anyway.
    - References to update: README clone URL and links, the PR link in the "Share this dataset" note, `pyproject.toml` name, Docker image names in docs (`bharat:local` to `bharat-post-dir:local`), `ghcr.io/code-kasha/bharat-post-dir` (CI derives it from the repo name), AGENTS.md, CONTRIBUTING.md and the memory note.

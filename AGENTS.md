@@ -36,6 +36,8 @@ bharat-post-dir is a read-only Django REST Framework postal directory. Use Pytho
 - SQLite is the only database, in development and deployment. Keep it on a persistent volume.
 - Avoid unrelated frameworks, authentication, or a frontend build pipeline for this API milestone.
 - Keep README examples and OpenAPI consistent with behavior. Add regression tests for fixes.
+- The version lives only in `pyproject.toml` (settings read it). A release is a `CHANGELOG.md` entry plus a
+  `v*` tag matching that version; CI checks, publishes the image, then creates the GitHub Release.
 
 ## Ongoing work
 
