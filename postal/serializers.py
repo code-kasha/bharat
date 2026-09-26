@@ -21,3 +21,19 @@ class OfficeQuerySerializer(serializers.Serializer):
     district = serializers.CharField(max_length=200, required=False)
     search = serializers.CharField(min_length=2, max_length=100, required=False)
     page = serializers.IntegerField(min_value=1, required=False)
+
+
+class StateSerializer(serializers.Serializer):
+    state = serializers.CharField()
+    office_count = serializers.IntegerField()
+
+
+class DistrictSerializer(serializers.Serializer):
+    state = serializers.CharField()
+    district = serializers.CharField()
+    office_count = serializers.IntegerField()
+
+
+class DistrictQuerySerializer(serializers.Serializer):
+    state = serializers.CharField(max_length=200, required=False)
+    page = serializers.IntegerField(min_value=1, required=False)

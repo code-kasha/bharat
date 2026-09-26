@@ -1,7 +1,6 @@
 import os
 from pathlib import Path
 
-import dj_database_url
 from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -9,10 +8,6 @@ DEBUG = os.environ.get("DJANGO_DEBUG", "true").lower() == "true"
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "development-only-do-not-deploy")
 if not DEBUG and SECRET_KEY == "development-only-do-not-deploy":
     raise ImproperlyConfigured("Set DJANGO_SECRET_KEY when DJANGO_DEBUG=false.")
-if not DEBUG and not os.environ.get("DATABASE_URL", "").startswith(
-    ("postgres://", "postgresql://")
-):
-    raise ImproperlyConfigured("Production requires a PostgreSQL DATABASE_URL.")
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
 INSTALLED_APPS = ["django.contrib.contenttypes", "rest_framework", "drf_spectacular", "postal"]
 MIDDLEWARE = [
@@ -29,7 +24,18 @@ TEMPLATES = [
         "OPTIONS": {"context_processors": []},
     }
 ]
-DATABASES = {"default": dj_database_url.config(default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}")}
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": os.environ.get("SQLITE_PATH", BASE_DIR / "db.sqlite3"),
+        "OPTIONS": {
+            # WAL lets API reads continue while an import writes; IMMEDIATE serializes writers.
+            "init_command": "PRAGMA journal_mode=WAL; PRAGMA synchronous=NORMAL;",
+            "transaction_mode": "IMMEDIATE",
+            "timeout": 20,
+        },
+    }
+}
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 USE_TZ = True
 TIME_ZONE = "UTC"
@@ -45,7 +51,7 @@ REST_FRAMEWORK = {
 SPECTACULAR_SETTINGS = {
     "TITLE": "Bharat Postal Directory API",
     "DESCRIPTION": "Read-only postal lookup. Provenance is available at /api/v1/dataset/.",
-    "VERSION": "0.2.0",
+    "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
 SECURE_CONTENT_TYPE_NOSNIFF = True

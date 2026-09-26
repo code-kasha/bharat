@@ -1,9 +1,5 @@
-import csv
-
 import pytest
 from rest_framework.test import APIClient
-
-from postal.importer import HEADERS
 
 
 @pytest.fixture
@@ -11,41 +7,31 @@ def api():
     return APIClient()
 
 
-@pytest.fixture
-def csv_file(tmp_path):
-    def write(rows=None, headers=None):
-        path = tmp_path / "postal.csv"
-        with path.open("w", encoding="utf-8-sig", newline="") as stream:
-            writer = csv.writer(stream)
-            writer.writerow(headers or HEADERS)
-            writer.writerows(
-                rows
-                if rows is not None
-                else [
-                    [
-                        "Circle",
-                        "Region",
-                        "Division",
-                        "Office A",
-                        "400001",
-                        "HO",
-                        "Delivery",
-                        "District",
-                        "State",
-                    ],
-                    [
-                        "Circle",
-                        "Region",
-                        "Division",
-                        "Office B",
-                        "400001",
-                        "SO",
-                        "Delivery",
-                        "District",
-                        "State",
-                    ],
-                ]
-            )
-        return path
+def office(name="Office A", pincode="400001", **overrides):
+    """A synthetic record shaped like a data.gov.in API response row."""
+    return {
+        "circlename": "Circle",
+        "regionname": "Region",
+        "divisionname": "Division",
+        "officename": name,
+        "pincode": pincode,
+        "officetype": "HO",
+        "delivery": "Delivery",
+        "district": "District",
+        "statename": "State",
+        "latitude": "18.93",
+        "longitude": "72.83",
+    } | overrides
 
-    return write
+
+@pytest.fixture
+def records():
+    return [office(), office("Office B", officetype="SO", latitude="NA", longitude="")]
+
+
+@pytest.fixture(autouse=True)
+def no_network(monkeypatch):
+    def refuse(*args, **kwargs):
+        raise AssertionError("Tests must not reach data.gov.in")
+
+    monkeypatch.setattr("postal.importer.urlopen", refuse)

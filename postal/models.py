@@ -22,11 +22,10 @@ class PostOffice(models.Model):
     division = models.CharField(max_length=200)
     office_type = models.CharField(max_length=30)
     delivery = models.CharField(max_length=30)
+    # As published by the source; unparseable values are null and some points are known wrong.
+    latitude = models.FloatField(null=True, blank=True)
+    longitude = models.FloatField(null=True, blank=True)
 
     class Meta:
+        # Not unique: the stored legacy snapshot lists three offices twice with differing details.
         ordering = ["pincode", "state", "district", "office_name", "id"]
-        constraints = [
-            models.UniqueConstraint(
-                fields=["pincode", "state", "district", "office_name"], name="unique_post_office"
-            )
-        ]

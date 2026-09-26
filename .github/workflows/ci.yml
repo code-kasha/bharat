@@ -5,19 +5,6 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:17
-        env:
-          POSTGRES_DB: bharat
-          POSTGRES_USER: bharat
-          POSTGRES_PASSWORD: test-only-password
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U bharat" --health-interval 5s
-          --health-timeout 5s --health-retries 10
-    env:
-      DATABASE_URL: postgres://bharat:test-only-password@localhost:5432/bharat
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -32,7 +19,6 @@ jobs:
       - run: uv run pytest
       - run: uv run python manage.py spectacular --validate --fail-on-warn --file schema.yml
       - run: uv run python manage.py migrate --noinput
-      - run: uv run python manage.py import_postal_data data/sample.csv --source 'Synthetic demonstration data'
       - run: docker build -t bharat:check .
   publish:
     if: startsWith(github.ref, 'refs/tags/v')

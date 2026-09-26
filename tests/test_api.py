@@ -1,14 +1,16 @@
 import pytest
+from conftest import office
 
-from postal.importer import parse_csv, replace_dataset
+from postal.importer import parse_records, replace_dataset
 from postal.models import PostOffice
 
 pytestmark = pytest.mark.django_db
 
 
 @pytest.fixture
-def directory(csv_file):
-    replace_dataset(parse_csv(csv_file()), source="test fixture")
+def directory(records):
+    records.append(office("Office C", pincode="110001", district="Other", statename="Another"))
+    replace_dataset(parse_records(records), source="test fixture")
 
 
 def test_pin_returns_all_matching_offices(api, directory):
@@ -17,6 +19,8 @@ def test_pin_returns_all_matching_offices(api, directory):
     assert response.data["count"] == 2
     assert {row["office_name"] for row in response.data["results"]} == {"Office A", "Office B"}
     assert response.data["results"][0]["pincode"] == "400001"
+    assert response.data["results"][0]["latitude"] == 18.93
+    assert response.data["results"][1]["longitude"] is None
 
 
 @pytest.mark.parametrize("pin,expected", [("bad", 400), ("000001", 400), ("999999", 404)])
@@ -43,9 +47,9 @@ def test_pagination_is_bounded_and_stable(api, directory):
         prototype.save()
     response = api.get("/api/v1/offices/")
     second = api.get("/api/v1/offices/?page=2")
-    assert response.data["count"] == 32
+    assert response.data["count"] == 33
     assert len(response.data["results"]) == 25
-    assert len(second.data["results"]) == 7
+    assert len(second.data["results"]) == 8
     assert not (
         {row["office_name"] for row in response.data["results"]}
         & {row["office_name"] for row in second.data["results"]}
@@ -55,7 +59,24 @@ def test_pagination_is_bounded_and_stable(api, directory):
 def test_metadata_and_empty_state(api, directory):
     response = api.get("/api/v1/dataset/")
     assert response.data["source"] == "test fixture"
-    assert response.data["row_count"] == 2
+    assert response.data["row_count"] == 3
+
+
+def test_states_are_listed_with_office_counts(api, directory):
+    response = api.get("/api/v1/states/")
+    assert response.data["results"] == [
+        {"state": "Another", "office_count": 1},
+        {"state": "State", "office_count": 2},
+    ]
+
+
+def test_districts_filter_by_state(api, directory):
+    assert api.get("/api/v1/districts/").data["count"] == 2
+    response = api.get("/api/v1/districts/", {"state": "state"})
+    assert response.data["results"] == [
+        {"state": "State", "district": "District", "office_count": 2}
+    ]
+    assert api.get("/api/v1/districts/", {"page": "0"}).status_code == 400
 
 
 def test_no_dataset_yet(api):
@@ -64,7 +85,14 @@ def test_no_dataset_yet(api):
 
 
 @pytest.mark.parametrize(
-    "url", ["/api/v1/offices/", "/api/v1/pincodes/400001/", "/api/v1/dataset/"]
+    "url",
+    [
+        "/api/v1/offices/",
+        "/api/v1/pincodes/400001/",
+        "/api/v1/states/",
+        "/api/v1/districts/",
+        "/api/v1/dataset/",
+    ],
 )
 def test_public_api_does_not_accept_writes(api, url):
     assert api.post(url, {}).status_code == 405

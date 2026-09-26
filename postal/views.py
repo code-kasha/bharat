@@ -1,14 +1,21 @@
 import re
 
 from django.db import connection
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.http import JsonResponse
 from drf_spectacular.utils import extend_schema
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 
 from postal.models import Dataset, PostOffice
-from postal.serializers import DatasetSerializer, OfficeQuerySerializer, OfficeSerializer
+from postal.serializers import (
+    DatasetSerializer,
+    DistrictQuerySerializer,
+    DistrictSerializer,
+    OfficeQuerySerializer,
+    OfficeSerializer,
+    StateSerializer,
+)
 
 
 def health(request):
@@ -47,6 +54,32 @@ class PinLookupView(ListAPIView):
         if not result.exists():
             raise NotFound("PIN not found in the imported dataset.")
         return result
+
+
+class StateListView(ListAPIView):
+    serializer_class = StateSerializer
+
+    def get_queryset(self):
+        return (
+            PostOffice.objects.values("state").annotate(office_count=Count("id")).order_by("state")
+        )
+
+
+@extend_schema(parameters=[DistrictQuerySerializer])
+class DistrictListView(ListAPIView):
+    serializer_class = DistrictSerializer
+
+    def get_queryset(self):
+        query = DistrictQuerySerializer(data=self.request.query_params)
+        query.is_valid(raise_exception=True)
+        result = PostOffice.objects.all()
+        if state := query.validated_data.get("state"):
+            result = result.filter(state__iexact=state)
+        return (
+            result.values("state", "district")
+            .annotate(office_count=Count("id"))
+            .order_by("state", "district")
+        )
 
 
 class DatasetView(RetrieveAPIView):
