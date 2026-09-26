@@ -1,4 +1,4 @@
-An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from. Read the [project write-up](http://localhost:3000/projects/bharat) for background.
+An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from. Read the [project write-up](http://localhost:3000/projects/bharat-post-dir) for background.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
