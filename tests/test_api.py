@@ -92,6 +92,7 @@ def test_no_dataset_yet(api):
         "/api/v1/states/",
         "/api/v1/districts/",
         "/api/v1/dataset/",
+        "/api/v1/export/",
     ],
 )
 def test_public_api_does_not_accept_writes(api, url):
@@ -109,3 +110,33 @@ def test_interactive_documentation_renders(api):
     response = api.get("/api/docs/")
     assert response.status_code == 200
     assert b"SwaggerUIBundle" in response.content
+
+
+def test_export_is_one_complete_versioned_file(api, directory):
+    import gzip
+    import json
+
+    response = api.get("/api/v1/export/")
+    assert response.status_code == 200
+    body = json.loads(b"".join(response.streaming_content))
+    assert body["dataset"]["row_count"] == 3
+    assert [row["office_name"] for row in body["offices"]] == ["Office C", "Office A", "Office B"]
+    assert body["offices"][0].keys() == api.get("/api/v1/offices/").data["results"][0].keys()
+    checksum = body["dataset"]["checksum"]
+    assert response["ETag"] == f'"{checksum}"'
+    assert f"bharat-offices-undated-{checksum[:12]}.json" in response["Content-Disposition"]
+
+    compressed = api.get("/api/v1/export/", HTTP_ACCEPT_ENCODING="gzip")
+    assert compressed["Content-Encoding"] == "gzip"
+    assert json.loads(gzip.decompress(b"".join(compressed.streaming_content))) == body
+
+
+@pytest.mark.parametrize("etag", ['"{}"', 'W/"{}"'])
+def test_export_is_not_resent_to_a_client_that_has_it(api, directory, etag):
+    checksum = api.get("/api/v1/dataset/").data["checksum"]
+    response = api.get("/api/v1/export/", HTTP_IF_NONE_MATCH=etag.format(checksum))
+    assert response.status_code == 304
+
+
+def test_export_before_import(api):
+    assert api.get("/api/v1/export/").status_code == 404

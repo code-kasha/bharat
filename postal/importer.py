@@ -1,4 +1,6 @@
+import csv
 import hashlib
+import io
 import json
 import math
 import re
@@ -107,7 +109,7 @@ def _coordinate(value, limit):
     return number if math.isfinite(number) and -limit <= number <= limit else None
 
 
-def parse_records(records, *, source_date=None):
+def parse_records(records, *, source_date=None, position="record {}".format):
     """Validate the entire snapshot before changing the active directory."""
     offices = {}
     duplicates = 0
@@ -143,7 +145,7 @@ def parse_records(records, *, source_date=None):
         if problem:
             rejected += 1
             if len(errors) < 10:
-                errors.append(f"record {number}: {problem}")
+                errors.append(f"{position(number)}: {problem}")
         else:
             offices[key] = values
     if rejected:
@@ -159,14 +161,41 @@ def parse_records(records, *, source_date=None):
     )
 
 
+def parse_csv(raw):
+    """Validate an uploaded CSV (the directory's column layout) without writing anything."""
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError as exc:
+        message = "The file is not UTF-8 text. Save it as CSV UTF-8 and try again."
+        raise ImportFailure(message) from exc
+    try:
+        reader = csv.DictReader(io.StringIO(text, newline=""))
+        rows = []
+        for row in reader:
+            if None in row or None in row.values():
+                raise ImportFailure(
+                    f"Line {reader.line_num} has a different number of fields than the header; "
+                    "no data changed."
+                )
+            rows.append(row)
+    except csv.Error as exc:
+        raise ImportFailure(f"The file is not valid CSV: {exc}") from exc
+    # Line 1 is the header, so record N is on line N + 1 of the file.
+    parsed = parse_records(rows, position=lambda number: f"line {number + 1}")
+    # Record the file's own hash so users can check it with any SHA256 tool.
+    parsed.checksum = hashlib.sha256(raw).hexdigest()
+    return parsed
+
+
 @transaction.atomic
-def replace_dataset(parsed, *, source):
+def replace_dataset(parsed, *, source, source_period=""):
     # SQLite's IMMEDIATE transactions (see settings) serialize concurrent imports.
     current, _ = Dataset.objects.get_or_create(pk=1, defaults={"source": source, "row_count": 0})
-    if (current.checksum, current.source, current.source_date) == (
+    if (current.checksum, current.source, current.source_date, current.source_period) == (
         parsed.checksum,
         source,
         parsed.source_date,
+        source_period,
     ):
         return False
     PostOffice.objects.all().delete()
@@ -175,6 +204,7 @@ def replace_dataset(parsed, *, source):
     )
     current.source = source
     current.source_date = parsed.source_date
+    current.source_period = source_period
     current.checksum = parsed.checksum
     current.row_count = len(parsed.offices)
     current.duplicate_count = parsed.duplicates

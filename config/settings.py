@@ -13,9 +13,14 @@ INSTALLED_APPS = ["django.contrib.contenttypes", "rest_framework", "drf_spectacu
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ROOT_URLCONF = "config.urls"
+# The change-source page replaces the directory from an uploaded CSV without authentication,
+# so it is for local use: on by default only while DEBUG is on.
+ALLOW_SOURCE_CHANGE = os.environ.get("BHARAT_ALLOW_SOURCE_CHANGE", str(DEBUG)).lower() == "true"
+SOURCE_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
 WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
     {

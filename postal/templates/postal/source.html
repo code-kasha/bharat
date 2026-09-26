@@ -1,0 +1,61 @@
+{% extends "postal/base.html" %}
+
+{% block title %}{% if form.errors %}Error: {% endif %}Change source – Bharat postal lookup{% endblock %}
+
+{% block heading %}Change source{% endblock %}
+
+{% block intro %}<p class="muted">Replace the directory with your own CSV file. <a href="/">Back to lookup</a></p>{% endblock %}
+
+{% block content %}
+  {% if form.errors %}
+  <div class="problem">
+    <h2 style="margin: .25rem 0; font-size: 1.1rem;">Nothing was changed</h2>
+    {% for error in form.non_field_errors %}<p class="error">{{ error }}</p>{% endfor %}
+    {% if form.file.errors or form.source.errors or form.source_date.errors or form.source_period.errors %}<p style="margin: .25rem 0;">Fix the fields marked below and upload again.</p>{% endif %}
+  </div>
+  {% endif %}
+
+  <p>The whole file is checked before anything changes. If any row is invalid, the current directory stays exactly as it is. A valid file replaces every office at once.</p>
+
+  <details>
+    <summary>What the CSV must contain</summary>
+    <ul>
+      <li>A header row with these columns, in any order: <code>Circle Name</code>, <code>Region Name</code>, <code>Division Name</code>, <code>Office Name</code>, <code>Pincode</code>, <code>OfficeType</code>, <code>Delivery</code>, <code>District</code>, <code>StateName</code>. Spaces, underscores and letter case in column names are ignored.</li>
+      <li>Optional <code>Latitude</code> and <code>Longitude</code> columns. Other columns are ignored.</li>
+      <li>Six-digit PINs that do not start with 0. Every field except Region Name must be filled in.</li>
+      <li>No office listed twice with different details (same PIN, state, district and office name). Exact repeats are merged.</li>
+      <li>UTF-8 text (in Excel, “CSV UTF-8”), at most {{ max_mb }} MB.</li>
+    </ul>
+  </details>
+
+  <form method="post" enctype="multipart/form-data" novalidate>
+    {% csrf_token %}
+    <div class="field">
+      <label for="id_file">CSV file</label>
+      {% for error in form.file.errors %}<p id="file-error" class="error"><span class="vh">Error:</span> {{ error }}</p>{% endfor %}
+      <input id="id_file" name="file" type="file" accept=".csv,text/csv" aria-required="true"{% if form.file.errors %} aria-invalid="true" aria-describedby="file-error"{% endif %}>
+    </div>
+    <div class="field">
+      <label for="id_source">Source</label>
+      <p id="source-hint" class="hint">Where the file came from, for example a website address or “Verified by the project maintainer”.</p>
+      {% for error in form.source.errors %}<p id="source-error" class="error"><span class="vh">Error:</span> {{ error }}</p>{% endfor %}
+      <input id="id_source" name="source" type="text" maxlength="500" required value="{{ form.source.value|default_if_none:'' }}"
+             aria-describedby="source-hint{% if form.source.errors %} source-error{% endif %}"{% if form.source.errors %} aria-invalid="true"{% endif %}>
+    </div>
+    <div class="field">
+      <label for="id_source_date">Source date (optional)</label>
+      <p id="source-date-hint" class="hint">The exact date the data was published, if you know it.</p>
+      {% for error in form.source_date.errors %}<p id="source-date-error" class="error"><span class="vh">Error:</span> {{ error }}</p>{% endfor %}
+      <input id="id_source_date" name="source_date" type="date" value="{{ form.source_date.value|default_if_none:'' }}"
+             aria-describedby="source-date-hint{% if form.source_date.errors %} source-date-error{% endif %}"{% if form.source_date.errors %} aria-invalid="true"{% endif %}>
+    </div>
+    <div class="field">
+      <label for="id_source_period">Approximate source date (optional)</label>
+      <p id="source-period-hint" class="hint">Use this instead of an exact date when you only know roughly, for example “2024–2025”. Leave both empty if you do not know.</p>
+      {% for error in form.source_period.errors %}<p id="source-period-error" class="error"><span class="vh">Error:</span> {{ error }}</p>{% endfor %}
+      <input id="id_source_period" name="source_period" type="text" maxlength="100" value="{{ form.source_period.value|default_if_none:'' }}"
+             aria-describedby="source-period-hint{% if form.source_period.errors %} source-period-error{% endif %}"{% if form.source_period.errors %} aria-invalid="true"{% endif %}>
+    </div>
+    <button type="submit">Upload and replace directory</button>
+  </form>
+{% endblock %}

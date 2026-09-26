@@ -1,0 +1,70 @@
+{% extends "postal/base.html" %}
+
+{% block title %}{% if error %}Error: {% elif page is not None %}{{ page.paginator.count }} result{{ page.paginator.count|pluralize }} for {{ query }} – {% endif %}Bharat postal lookup{% endblock %}
+
+{% block intro %}<p class="muted">Find Indian post offices by PIN or by office or district name.</p>{% endblock %}
+
+{% block content %}
+  {% if updated and dataset %}
+  <p class="notice" role="status">Source updated: {{ dataset.row_count }} offices loaded.</p>
+  {% endif %}
+
+  <section class="source" aria-labelledby="source-heading">
+    <h2 id="source-heading">About this data</h2>
+    {% if dataset %}
+    <dl>
+      <dt>Source</dt>
+      <dd>{{ dataset.source }}{% if allow_source_change %} (<a href="/source/">change source</a>){% endif %}</dd>
+      <dt>Source date</dt>
+      <dd>{% if dataset.source_date %}<time datetime="{{ dataset.source_date|date:'Y-m-d' }}">{{ dataset.source_date|date:"j F Y" }}</time>{% elif dataset.source_period %}{{ dataset.source_period }}{% else %}Not recorded. The directory may not reflect recent changes.{% endif %}</dd>
+      <dt>Loaded</dt>
+      <dd><time datetime="{{ dataset.imported_at|date:'c' }}">{{ dataset.imported_at|date:"j F Y" }}</time></dd>
+      <dt>Offices</dt>
+      <dd>{{ dataset.row_count }}</dd>
+    </dl>
+    {% else %}
+    <p style="margin: 0;">No dataset has been loaded, so searches return nothing.{% if allow_source_change %} <a href="/source/">Add a source</a>.{% endif %}</p>
+    {% endif %}
+  </section>
+
+  <form method="get" action="" role="search">
+    <label for="q">PIN or place name</label>
+    <p id="q-hint" class="hint">For example 110001, or Delhi.</p>
+    {% if error %}<p id="q-error" class="error"><span class="vh">Error:</span> {{ error }}</p>{% endif %}
+    <div class="row">
+      <input id="q" name="q" type="search" value="{{ query }}" maxlength="100" autocomplete="off"
+             aria-describedby="q-hint{% if error %} q-error{% endif %}"{% if error %} aria-invalid="true"{% endif %}>
+      <button type="submit">Search</button>
+    </div>
+  </form>
+
+  {% if page is not None %}
+  <h2 id="results-heading">{{ page.paginator.count }} result{{ page.paginator.count|pluralize }} for “{{ query }}”</h2>
+  {% if page.object_list %}
+  <div class="table-wrap" role="region" aria-labelledby="results-heading" tabindex="0">
+    <table>
+      <caption>Page {{ page.number }} of {{ page.paginator.num_pages }}</caption>
+      <thead>
+        <tr><th scope="col">Office</th><th scope="col">PIN</th><th scope="col">District</th><th scope="col">State</th><th scope="col">Type</th><th scope="col">Delivery</th><th scope="col">Division</th></tr>
+      </thead>
+      <tbody>
+        {% for office in page.object_list %}
+        <tr><th scope="row">{{ office.office_name }}</th><td>{{ office.pincode }}</td><td>{{ office.district }}</td><td>{{ office.state }}</td><td>{{ office.office_type }}</td><td>{{ office.delivery }}</td><td>{{ office.division }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if page.has_other_pages %}
+  <nav aria-label="Result pages">
+    <ul>
+      {% if page.has_previous %}<li><a href="?q={{ query|urlencode }}&amp;page={{ page.previous_page_number }}" rel="prev">Previous page</a></li>{% endif %}
+      <li aria-current="page">Page {{ page.number }} of {{ page.paginator.num_pages }}</li>
+      {% if page.has_next %}<li><a href="?q={{ query|urlencode }}&amp;page={{ page.next_page_number }}" rel="next">Next page</a></li>{% endif %}
+    </ul>
+  </nav>
+  {% endif %}
+  {% else %}
+  <p>No offices match. Check the spelling, or try a shorter part of the name.</p>
+  {% endif %}
+  {% endif %}
+{% endblock %}
