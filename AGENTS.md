@@ -30,3 +30,7 @@ Bharat is a read-only Django REST Framework postal directory. Use Python 3.13 an
 - SQLite is the only database, in development and deployment. Keep it on a persistent volume.
 - Avoid unrelated frameworks, authentication, or a frontend build pipeline for this API milestone.
 - Keep README examples and OpenAPI consistent with behavior. Add regression tests for fixes.
+
+## Ongoing work
+
+The remaining work, settled decisions and how to resume are in `TODO.md`. Read it before starting.
