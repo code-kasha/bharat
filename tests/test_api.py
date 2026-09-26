@@ -140,3 +140,9 @@ def test_export_is_not_resent_to_a_client_that_has_it(api, directory, etag):
 
 def test_export_before_import(api):
     assert api.get("/api/v1/export/").status_code == 404
+
+
+def test_docs_page_pins_swagger_ui(api):
+    html = api.get("/api/docs/").content.decode()
+    assert "swagger-ui-dist@5.33.0/swagger-ui-bundle.js" in html
+    assert "@latest" not in html

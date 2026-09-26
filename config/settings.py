@@ -88,11 +88,17 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
+SWAGGER_UI_VERSION = "5.33.0"
 SPECTACULAR_SETTINGS = {
     "TITLE": "Bharat Postal Directory API",
     "DESCRIPTION": "Read-only postal lookup. Provenance is available at /api/v1/dataset/.",
     "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    # Pin the docs page's CDN assets: drf-spectacular defaults to @latest, which changes unseen.
+    "SWAGGER_UI_DIST": f"https://cdn.jsdelivr.net/npm/swagger-ui-dist@{SWAGGER_UI_VERSION}",
+    "SWAGGER_UI_FAVICON_HREF": (
+        f"https://cdn.jsdelivr.net/npm/swagger-ui-dist@{SWAGGER_UI_VERSION}/favicon-32x32.png"
+    ),
 }
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
