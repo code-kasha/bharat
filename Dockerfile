@@ -10,7 +10,9 @@ RUN useradd --create-home appuser
 # SQLite needs a writable directory for its WAL files, not just a writable database file.
 COPY --chown=appuser db.sqlite3 /data/bharat.sqlite3
 RUN chown appuser /data
-ENV SQLITE_PATH=/data/bharat.sqlite3
+# The venv on PATH keeps `docker exec <name> python manage.py ...` free of absolute paths,
+# which some host shells (e.g. Git Bash) would otherwise rewrite.
+ENV SQLITE_PATH=/data/bharat.sqlite3 PATH=/app/.venv/bin:$PATH
 USER appuser
 EXPOSE 8000
-CMD ["sh", "-c", "/app/.venv/bin/python manage.py migrate --noinput && exec /app/.venv/bin/gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --access-logfile -"]

@@ -14,7 +14,15 @@ uv run python manage.py migrate
 uv run python manage.py runserver
 ```
 
-To load current official data instead, get a free data.gov.in API key (sign in at [data.gov.in](https://www.data.gov.in/) and copy it from your account's API key page) and run `DATA_GOV_IN_API_KEY=your-key uv run python manage.py fetch_postal_data`. In PowerShell, set the key first with `$env:DATA_GOV_IN_API_KEY = "your-key"`. The public sample key is capped at 10 records, so it cannot load the directory.
+To load current official data instead, get a free data.gov.in API key (sign in at [data.gov.in](https://www.data.gov.in/) and copy it from your account's API key page), then set it in your shell and run `uv run python manage.py fetch_postal_data`:
+
+| Shell | Set the key |
+| --- | --- |
+| bash, zsh, Git Bash | `export DATA_GOV_IN_API_KEY=your-key` |
+| PowerShell | `$env:DATA_GOV_IN_API_KEY = "your-key"` |
+| cmd | `set DATA_GOV_IN_API_KEY=your-key` |
+
+The public sample key is capped at 10 records, so it cannot load the directory.
 
 Open [API documentation](http://127.0.0.1:8000/api/docs/) or [a PIN lookup](http://127.0.0.1:8000/api/v1/pincodes/110001/).
 
@@ -63,12 +71,14 @@ The office above shows the response shape; its values are illustrative. `latitud
 
 ## Fetching the dataset
 
+With `DATA_GOV_IN_API_KEY` set in your shell (see [Quick start](#quick-start)):
+
 ```sh
-DATA_GOV_IN_API_KEY=your-key uv run python manage.py fetch_postal_data --dry-run
-DATA_GOV_IN_API_KEY=your-key uv run python manage.py fetch_postal_data
+uv run python manage.py fetch_postal_data --dry-run
+uv run python manage.py fetch_postal_data
 ```
 
-The command reads the key from `DATA_GOV_IN_API_KEY` so it stays out of shell history. It pages through the API (`--page-size`, default 1000) and retries transient gateway errors. It refuses a download that is shorter than the total the API reports. `--resource` selects another OGD resource ID with the same fields.
+The command reads the key only from `DATA_GOV_IN_API_KEY`, never from a command-line argument, so it does not appear in process listings. It pages through the API (`--page-size`, default 1000) and retries transient gateway errors. It refuses a download that is shorter than the total the API reports. `--resource` selects another OGD resource ID with the same fields.
 
 The importer validates the complete download before writing. It keeps six-digit PINs as strings, collapses identical records, rejects conflicting identities and refuses empty snapshots. Office identity is PIN + state + district + office name (case-insensitive during import). A failed fetch leaves the current directory untouched. A successful fetch replaces the entire directory and metadata in one transaction. Repeating a fetch that returns identical data is a no-op. Database-generated IDs are deliberately not exposed as stable public identifiers. The database itself does not enforce office uniqueness, so a database built from another snapshot may hold repeated identities; the fetch still rejects them.
 
@@ -115,9 +125,40 @@ uv run python manage.py spectacular --validate --fail-on-warn --file schema.yml
 
 Tests cover one-to-many PIN lookup, input validation, filters, pagination, state/district listings, read-only routes, provenance, API pagination, truncated or malformed downloads, retries, duplicate/conflict handling, idempotence, dry runs and rollback. They never contact data.gov.in.
 
-## Docker setup on Windows
+## Run with Docker
 
-Install Docker Desktop with the WSL 2 backend. See the [official Windows installation guide](https://docs.docker.com/desktop/setup/install/windows-install/) for current system requirements.
+These commands are identical in bash, zsh, PowerShell, cmd and Git Bash. From the repository root, once Docker's engine is running:
+
+```sh
+docker build -t bharat:local .
+docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat:local
+```
+
+The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
+
+- [health](http://127.0.0.1:18000/health/) should report `ok`
+- [dataset](http://127.0.0.1:18000/api/v1/dataset/) should report `row_count: 155599`
+- [PIN 110001](http://127.0.0.1:18000/api/v1/pincodes/110001/) should return 23 offices
+- [API documentation](http://127.0.0.1:18000/api/docs/)
+
+When finished, run `docker stop bharat-demo`; `--rm` removes the container.
+
+Each new container starts from the bundled database. To keep data you fetch inside the container, add a named volume; on first use, Docker seeds an empty named volume with the bundled database. Set `DATA_GOV_IN_API_KEY` in your shell as shown in [Quick start](#quick-start). `-e DATA_GOV_IN_API_KEY` with no value passes it through without the key appearing in the command:
+
+```sh
+docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat:local
+docker exec -e DATA_GOV_IN_API_KEY bharat-demo python manage.py fetch_postal_data
+```
+
+An existing volume keeps its own data and is not updated when you rebuild the image. Remove it with `docker volume rm bharat-data` to go back to the bundled database.
+
+The image puts its virtualenv on `PATH`, so container commands are written as `python manage.py ...`. Avoid passing arguments that start with `/` (such as `/app/.venv/bin/python`): Git Bash on Windows rewrites them into Windows paths.
+
+Verified on 26 September 2026 with Docker Desktop (Engine 29.8.0, Compose 5.5.1) on WSL 2.7.14. The image build, startup migrations, health, dataset, PIN lookup, district filter, search, documentation, write rejection (405), non-root user, named-volume seeding and `docker exec` from PowerShell and Git Bash all passed. These are tested versions, not minimum requirements.
+
+### Installing Docker on Windows
+
+On macOS or Linux, install Docker Desktop or Docker Engine from the [official documentation](https://docs.docker.com/get-started/get-docker/). On Windows, install Docker Desktop with the WSL 2 backend. See the [official Windows installation guide](https://docs.docker.com/desktop/setup/install/windows-install/) for current system requirements.
 
 1. Open PowerShell **as Administrator** and install WSL without an additional Linux distribution:
 
@@ -154,35 +195,6 @@ If `docker` is not recognized, reopen the terminal after installation. For a per
 
 If the error mentions a missing `dockerDesktopLinuxEngine` pipe, open Docker Desktop and wait for startup. If WSL is missing, complete step 1; if it needs an update, run `wsl --update` in Administrator PowerShell and restart Docker Desktop.
 
-### Run Bharat in a local container
-
-From the repository root, after Docker's engine is ready:
-
-```powershell
-docker build -t bharat:local .
-docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat:local
-```
-
-The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. Check it:
-
-```powershell
-Invoke-RestMethod http://127.0.0.1:18000/health/
-Invoke-RestMethod http://127.0.0.1:18000/api/v1/dataset/
-Invoke-RestMethod http://127.0.0.1:18000/api/v1/pincodes/110001/
-```
-
-The health response should report `ok`, the dataset response should report `row_count: 155599`, and PIN 110001 should return 23 offices. Open [container API documentation](http://127.0.0.1:18000/api/docs/) to explore the endpoints. When finished, run `docker stop bharat-demo`; `--rm` removes the container.
-
-Each new container starts from the bundled database. To keep data you fetch inside the container, add a named volume. On first use, Docker seeds an empty named volume with the bundled database:
-
-```powershell
-docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat:local
-docker exec -e DATA_GOV_IN_API_KEY=$env:DATA_GOV_IN_API_KEY bharat-demo /app/.venv/bin/python manage.py fetch_postal_data
-```
-
-An existing volume keeps its own data and is not updated when you rebuild the image. Remove it with `docker volume rm bharat-data` to go back to the bundled database. Run `docker exec` from PowerShell or cmd; Git Bash rewrites `/app/...` paths unless you set `MSYS_NO_PATHCONV=1`.
-
-Verified on 26 September 2026 with Docker Desktop (Engine 29.8.0, Compose 5.5.1) on WSL 2.7.14. The image build, startup migrations, health, dataset, PIN lookup, district filter, search, documentation, write rejection (405), non-root user and named-volume seeding all passed. These are tested versions, not minimum requirements.
 
 ## CI and release delivery
 
