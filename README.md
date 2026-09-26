@@ -211,7 +211,7 @@ uv run python manage.py makemigrations --check --dry-run
 uv run python manage.py spectacular --validate --fail-on-warn --file schema.yml
 ```
 
-Tests cover one-to-many PIN lookup, input validation, filters, pagination, state/district listings, read-only routes, provenance, API pagination, truncated or malformed downloads, retries, duplicate merging, repeated offices kept and counted, idempotence, dry runs and rollback. They never contact data.gov.in.
+Tests cover one-to-many PIN lookup, input validation, filters, pagination, state/district listings, read-only routes, provenance, API pagination, truncated or malformed downloads, retries, duplicate merging, repeated offices kept and counted, idempotence, dry runs and rollback. They also cover the lookup page (one request, three queries, accessibility markup), the export, production-mode settings, CSV and JSON uploads in every shape, temporary per-browser uploads (isolation, expiry, the size and count caps, CSRF, going back to the default dataset), saved uploads and the share note. They never contact data.gov.in. GitHub Actions runs all of these checks and a Docker build on every push; on 26 September 2026, 113 tests passed there and locally.
 
 ## Run with Docker
 
