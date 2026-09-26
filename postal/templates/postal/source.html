@@ -1,6 +1,6 @@
 {% extends "postal/base.html" %}
 
-{% block title %}{% if form.errors %}Error: {% endif %}Change source – Bharat postal lookup{% endblock %}
+{% block title %}{% if form.errors %}Error: {% endif %}Change source – bharat-post-dir{% endblock %}
 
 {% block heading %}Change source{% endblock %}
 
@@ -18,14 +18,14 @@
   {% if saves %}
   <p>The whole file is checked before anything changes. If any row is invalid, the current directory stays exactly as it is. A valid file replaces every office at once.</p>
   {% else %}
-  <p>The whole file is checked first; if any row is invalid, nothing is kept. A valid file is temporary: only this browser sees it, on the lookup page and in search, for {{ hours }} hours or until you go back to the default dataset. The saved directory, the API and the whole-directory download are not changed. To replace the saved directory, run Bharat with <code>DJANGO_DEBUG=true</code>.</p>
+  <p>The whole file is checked first; if any row is invalid, nothing is kept. A valid file is temporary: only this browser sees it, on the lookup page and in search, for {{ hours }} hours or until you go back to the default dataset. The saved directory, the API and the whole-directory download are not changed. To replace the saved directory, run bharat-post-dir with <code>DJANGO_DEBUG=true</code>.</p>
   {% endif %}
 
   <details>
     <summary>What the file must contain</summary>
     <ul>
       <li>CSV: a header row with these columns, in any order: <code>Circle Name</code>, <code>Region Name</code>, <code>Division Name</code>, <code>Office Name</code>, <code>Pincode</code>, <code>OfficeType</code>, <code>Delivery</code>, <code>District</code>, <code>StateName</code>. Spaces, underscores and letter case in column names are ignored.</li>
-      <li>JSON, detected automatically: Bharat's own download from <code>/api/v1/export/</code> (its source and date fill in the fields below if you leave them empty), a data.gov.in API response (<code>{"records": [...]}</code>), or a plain list of offices. Each office uses the CSV column names above or Bharat's field names (<code>office_name</code>, <code>pincode</code>, <code>office_type</code>, <code>delivery</code>, <code>district</code>, <code>state</code>, <code>circle</code>, <code>region</code>, <code>division</code>). Problems are reported by record number.</li>
+      <li>JSON, detected automatically: bharat-post-dir's own download from <code>/api/v1/export/</code> (its source and date fill in the fields below if you leave them empty), a data.gov.in API response (<code>{"records": [...]}</code>), or a plain list of offices. Each office uses the CSV column names above or bharat-post-dir's field names (<code>office_name</code>, <code>pincode</code>, <code>office_type</code>, <code>delivery</code>, <code>district</code>, <code>state</code>, <code>circle</code>, <code>region</code>, <code>division</code>). Problems are reported by record number.</li>
       <li>Optional <code>Latitude</code> and <code>Longitude</code> columns or fields. Other columns are ignored.</li>
       <li>Six-digit PINs that do not start with 0. Every field except Region Name must be filled in.</li>
       <li>Exact repeated rows are merged. An office listed more than once with different details (same PIN, state, district and office name) is kept in every version and counted.</li>
@@ -42,7 +42,7 @@
     </div>
     <div class="field">
       <label for="id_source">Source</label>
-      <p id="source-hint" class="hint">Where the file came from, for example a website address or “Verified by the project maintainer”. Required, except for a Bharat download, which records its own.</p>
+      <p id="source-hint" class="hint">Where the file came from, for example a website address or “Verified by the project maintainer”. Required, except for a bharat-post-dir download, which records its own.</p>
       {% for error in form.source.errors %}<p id="source-error" class="error"><span class="vh">Error:</span> {{ error }}</p>{% endfor %}
       <input id="id_source" name="source" type="text" maxlength="500" value="{{ form.source.value|default_if_none:'' }}"
              aria-describedby="source-hint{% if form.source.errors %} source-error{% endif %}"{% if form.source.errors %} aria-invalid="true"{% endif %}>

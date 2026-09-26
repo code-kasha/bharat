@@ -45,8 +45,8 @@ MIDDLEWARE = [
 ]
 ROOT_URLCONF = "config.urls"
 # The change-source page has no authentication, so it is for local use; hosted sites
-# (including the Docker image) set BHARAT_ALLOW_SOURCE_CHANGE=false.
-ALLOW_SOURCE_CHANGE = env_flag("BHARAT_ALLOW_SOURCE_CHANGE", True)
+# (including the Docker image) set SITE_ALLOW_SOURCE_CHANGE=false.
+ALLOW_SOURCE_CHANGE = env_flag("SITE_ALLOW_SOURCE_CHANGE", True)
 SOURCE_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
 # Contributor mode saves an upload over the database. Otherwise each upload is temporary: a
 # scratch SQLite file that only the uploading browser reads, deleted after a set time.
@@ -90,7 +90,7 @@ REST_FRAMEWORK = {
 }
 SWAGGER_UI_VERSION = "5.33.0"
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Bharat Postal Directory API",
+    "TITLE": "bharat-post-dir API",
     "DESCRIPTION": "Read-only postal lookup. Provenance is available at /api/v1/dataset/.",
     "VERSION": "0.3.0",
     "SERVE_INCLUDE_SCHEMA": False,

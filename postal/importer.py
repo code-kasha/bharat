@@ -30,7 +30,7 @@ FIELDS = {
     "district": "district",
     "statename": "state",
 }
-# Bharat's own field names (the export and API), normalized like the keys above.
+# bharat-post-dir's own field names (the export and API), normalized like the keys above.
 ALIASES = {
     "state": "statename",
     "circle": "circlename",
@@ -62,7 +62,7 @@ class Snapshot:
 
 def _get_json(url, *, attempts=4, timeout=60):
     """GET a JSON document, retrying transient gateway and network failures."""
-    request = Request(url, headers={"Accept": "application/json", "User-Agent": "bharat"})
+    request = Request(url, headers={"Accept": "application/json", "User-Agent": "bharat-post-dir"})
     for attempt in range(1, attempts + 1):
         try:
             with urlopen(request, timeout=timeout) as response:
@@ -217,13 +217,13 @@ def parse_csv(raw):
 
 
 JSON_SHAPES = (
-    'Bharat\'s export ({"dataset": ..., "offices": [...]}), a data.gov.in response '
+    'bharat-post-dir\'s export ({"dataset": ..., "offices": [...]}), a data.gov.in response '
     '({"records": [...]}) or a list of offices'
 )
 
 
 def _export_details(dataset):
-    """Provenance carried by a Bharat export, used for form fields the uploader left empty."""
+    """Provenance carried by a bharat-post-dir export, for form fields left empty."""
     if not isinstance(dataset, dict):
         return {}
     details = {}
@@ -262,7 +262,7 @@ def parse_json(raw, text=None):
 def parse_upload(raw):
     """Validate an uploaded CSV or JSON file, detected from its content, without writing.
 
-    Returns the parsed dataset and any provenance the file itself carries (a Bharat export).
+    Returns the parsed dataset and any provenance the file itself carries (an export).
     """
     text = _decode(raw)
     if text.lstrip()[:1] in ("{", "["):

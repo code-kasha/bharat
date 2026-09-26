@@ -20,7 +20,7 @@ from django.db.utils import load_backend
 from postal.importer import replace_dataset
 from postal.models import Dataset, PostOffice
 
-COOKIE = "bharat_upload"
+COOKIE = "dataset_upload"
 SALT = "postal.uploads"
 TOKEN_RE = re.compile(r"[0-9a-f]{32}")
 

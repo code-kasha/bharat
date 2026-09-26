@@ -1,13 +1,13 @@
 {% extends "postal/base.html" %}
 
-{% block title %}{% if error %}Error: {% elif page is not None %}{{ page.paginator.count|floatformat:"g" }} result{{ page.paginator.count|pluralize }} for {{ query }} – {% endif %}Bharat postal lookup{% endblock %}
+{% block title %}{% if error %}Error: {% elif page is not None %}{{ page.paginator.count|floatformat:"g" }} result{{ page.paginator.count|pluralize }} for {{ query }} – {% endif %}bharat-post-dir{% endblock %}
 
 {% block intro %}<p class="muted">Find Indian post offices by PIN or by office or district name.</p>{% endblock %}
 
 {% block content %}
   {% if updated and dataset %}
   {% if upload %}
-  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count|floatformat:"g" }} offices. Only this browser sees it.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %} To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
+  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count|floatformat:"g" }} offices. Only this browser sees it.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %} To save it and share it with others, run bharat-post-dir with <code>DJANGO_DEBUG=true</code> and upload it again.</p>
   {% else %}
   <p class="notice" role="status">Source updated: {{ dataset.row_count|floatformat:"g" }} offices loaded.{% if dataset.repeated_identity_count %} {{ dataset.repeated_identity_count }} office{{ dataset.repeated_identity_count|pluralize:" is,s are" }} listed more than once with different details; every version was kept.{% endif %}</p>
   {% endif %}
@@ -15,7 +15,7 @@
   {% if share %}
   <section class="source" aria-labelledby="share-heading">
     <h2 id="share-heading">Share this dataset</h2>
-    <p>The new directory is saved in your local <code>db.sqlite3</code>. If others could use it, please share it: commit the file on a branch, then either open a pull request on <a href="{{ share.repository }}">{{ share.repository }}</a> or publish your fork. Bharat is not actively maintained, so a pull request may not be reviewed; a published fork works just as well.</p>
+    <p>The new directory is saved in your local <code>db.sqlite3</code>. If others could use it, please share it: commit the file on a branch, then either open a pull request on <a href="{{ share.repository }}">{{ share.repository }}</a> or publish your fork. bharat-post-dir is not actively maintained, so a pull request may not be reviewed; a published fork works just as well.</p>
     <h3 style="font-size: 1rem; margin: 1rem 0 .25rem;" id="share-commands">Commands, from the repository folder</h3>
     <pre class="table-wrap" tabindex="0" aria-labelledby="share-commands"><code>{{ share.commands }}</code></pre>
     <h3 style="font-size: 1rem; margin: 1rem 0 .25rem;" id="share-description">Description for the pull request or your fork</h3>

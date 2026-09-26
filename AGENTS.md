@@ -1,6 +1,6 @@
-# Working on Bharat
+# Working on bharat-post-dir
 
-Bharat is a read-only Django REST Framework postal directory. Use Python 3.13 and uv.
+bharat-post-dir is a read-only Django REST Framework postal directory. Use Python 3.13 and uv.
 
 ## Commands
 
@@ -15,7 +15,7 @@ Bharat is a read-only Django REST Framework postal directory. Use Python 3.13 an
 - `postal/importer.py` owns fetching, CSV parsing, validation and transactional replacement. The only
   writers are `fetch_postal_data` and the local change-source page (`/source/`), both through the importer.
 - The change-source page has no authentication: keep it local-only and CSRF-protected. It is on in a clone
-  and off in the Docker image and on hosted sites (`BHARAT_ALLOW_SOURCE_CHANGE=false`). With `DEBUG` it
+  and off in the Docker image and on hosted sites (`SITE_ALLOW_SOURCE_CHANGE=false`). With `DEBUG` it
   replaces the database; otherwise `postal/uploads.py` keeps the upload in a scratch SQLite file that only
   the uploading browser's lookup page reads. The API and export always serve the default dataset. No CSV
   files are stored in the repository.

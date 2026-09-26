@@ -96,7 +96,7 @@ def share_details(dataset):
 
 class SourceForm(forms.Form):
     file = forms.FileField(error_messages={"required": "Choose a CSV or JSON file to upload."})
-    # Optional only because a Bharat export carries its own source; checked in clean().
+    # Optional only because a bharat-post-dir export carries its own source; checked in clean().
     source = forms.CharField(max_length=500, required=False)
     source_date = forms.DateField(
         required=False, error_messages={"invalid": "Enter a date like 2025-06-30."}
@@ -121,7 +121,7 @@ class SourceForm(forms.Form):
         except ImportFailure as exc:
             self.add_error("file", str(exc))
             return data
-        # A Bharat export says where its data came from; what the uploader types wins.
+        # A bharat-post-dir export says where its data came from; what the uploader types wins.
         if not data["source"].strip():
             data["source"] = carried.get("source", "")
         if not data["source_date"] and not data["source_period"].strip():

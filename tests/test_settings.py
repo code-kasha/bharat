@@ -20,7 +20,7 @@ PRINT_SETTINGS = (
 
 def settings_with(tmp_path, **env):
     """Load settings in a fresh interpreter, isolated from this test process."""
-    clean = {k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "BHARAT_"))}
+    clean = {k: v for k, v in os.environ.items() if not k.startswith(("DJANGO_", "SITE_"))}
     clean |= {"DJANGO_SETTINGS_MODULE": "config.settings", "SQLITE_PATH": str(tmp_path / "db")}
     result = subprocess.run(
         [sys.executable, "-c", PRINT_SETTINGS],
@@ -76,7 +76,7 @@ def test_contributor_mode_saves_uploads(tmp_path):
 
 
 def test_hosting_turns_change_source_off(tmp_path):
-    loaded = settings_with(tmp_path, BHARAT_ALLOW_SOURCE_CHANGE="false")
+    loaded = settings_with(tmp_path, SITE_ALLOW_SOURCE_CHANGE="false")
     assert loaded["ALLOW_SOURCE_CHANGE"] is False
     # The Docker image is for hosting, so it ships with change source off.
-    assert "ENV BHARAT_ALLOW_SOURCE_CHANGE=false" in (ROOT / "Dockerfile").read_text()
+    assert "ENV SITE_ALLOW_SOURCE_CHANGE=false" in (ROOT / "Dockerfile").read_text()

@@ -247,8 +247,8 @@ def test_migration_counts_repeated_offices_in_an_existing_directory(records):
     assert Dataset.objects.get().repeated_identity_count == 1
 
 
-def bharat_office(name="Office A", **overrides):
-    """An office as Bharat's export and API write it."""
+def export_office(name="Office A", **overrides):
+    """An office as bharat-post-dir's export and API write it."""
     return {
         "pincode": "400001",
         "office_name": name,
@@ -270,17 +270,17 @@ def as_json(document):
     return json.dumps(document).encode()
 
 
-def test_json_bharat_export_carries_its_provenance():
+def test_json_export_carries_its_provenance():
     from postal.importer import parse_upload
 
     raw = as_json(
         {
-            "dataset": {"source": "Bharat mirror", "source_date": "2025-06-30", "row_count": 2},
-            "offices": [bharat_office(), bharat_office("Office B")],
+            "dataset": {"source": "A mirror", "source_date": "2025-06-30", "row_count": 2},
+            "offices": [export_office(), export_office("Office B")],
         }
     )
     parsed, carried = parse_upload(raw)
-    assert carried == {"source": "Bharat mirror", "source_date": date(2025, 6, 30)}
+    assert carried == {"source": "A mirror", "source_date": date(2025, 6, 30)}
     assert [row["office_name"] for row in parsed.offices] == ["Office A", "Office B"]
     assert parsed.offices[0]["state"] == "State" and parsed.offices[0]["region"] == ""
     assert (parsed.offices[0]["latitude"], parsed.offices[0]["longitude"]) == (None, 72.83)
@@ -306,7 +306,7 @@ def test_json_data_gov_in_response_and_plain_lists():
         "District": "Bengaluru",
         "StateName": "Karnataka",
     }
-    for records in ([csv_names], [bharat_office("Listed")]):
+    for records in ([csv_names], [export_office("Listed")]):
         parsed, carried = parse_upload(b"\n  " + as_json(records))
         assert carried == {} and parsed.offices[0]["office_name"] == "Listed"
 
@@ -317,9 +317,9 @@ def test_json_data_gov_in_response_and_plain_lists():
         (b'{"offices": [', "not valid JSON: Expecting value at line 1, column 14"),
         (b'{"rows": []}', "Unrecognized JSON"),
         (b"[]", "no offices"),
-        (as_json([bharat_office(), bharat_office(pincode="0123")]), "record 2: PIN must"),
+        (as_json([export_office(), export_office(pincode="0123")]), "record 2: PIN must"),
         (as_json({"records": [office(), "x"]}), "record 2: missing fields"),
-        (as_json([bharat_office(state=["A"])]), "record 1: fields must be text"),
+        (as_json([export_office(state=["A"])]), "record 1: fields must be text"),
     ],
 )
 def test_bad_json_is_explained(raw, message):

@@ -200,7 +200,7 @@ def test_temporary_upload_is_seen_only_by_this_browser(client, directory, tempor
 
     response = upload(client, GOOD, source_date="2025-06-30")
     assert response.status_code == 302 and response["Location"] == "/?updated=1"
-    cookie = response.cookies["bharat_upload"]
+    cookie = response.cookies["dataset_upload"]
     assert cookie["httponly"] and cookie["samesite"] == "Lax"
     assert len(stored(upload_dir)) == 1
     # The saved directory is untouched.
@@ -253,7 +253,7 @@ def test_back_to_default_deletes_the_upload(client, directory, temporary, upload
     assert client.get("/source/default/").status_code == 405
     response = client.post("/source/default/")
     assert response.status_code == 302 and response["Location"] == "/"
-    assert response.cookies["bharat_upload"].value == ""
+    assert response.cookies["dataset_upload"].value == ""
     assert stored(upload_dir) == []
     html = client.get("/").content.decode()
     assert "test fixture" in html and "expired" not in html
@@ -280,14 +280,14 @@ def test_expired_upload_falls_back_to_default(client, directory, temporary, uplo
     response = client.get("/")
     html = response.content.decode()
     assert "test fixture" in html and "has expired or was removed" in html
-    assert response.cookies["bharat_upload"].value == ""
+    assert response.cookies["dataset_upload"].value == ""
     assert stored(upload_dir) == []
 
 
 def test_tampered_cookie_is_ignored(client, directory, temporary, upload_dir):
     upload(client, GOOD)
     (path,) = stored(upload_dir)
-    client.cookies["bharat_upload"] = path.stem
+    client.cookies["dataset_upload"] = path.stem
     assert "test fixture" in client.get("/").content.decode()
 
 
@@ -315,7 +315,7 @@ def test_uploads_are_capped(directory, temporary, upload_dir, settings):
 def test_rejected_temporary_upload_keeps_nothing(client, directory, temporary, upload_dir):
     response = upload(client, ["C,R,D,Bad,012345,HO,Delivery,X,Y"])
     assert response.status_code == 400 and "Nothing was changed" in response.content.decode()
-    assert stored(upload_dir) == [] and "bharat_upload" not in response.cookies
+    assert stored(upload_dir) == [] and "dataset_upload" not in response.cookies
 
 
 def test_change_source_page_explains_the_mode(client, temporary, settings):
@@ -360,8 +360,8 @@ def test_temporary_upload_points_to_saving_instead_of_sharing(client, directory,
     html = client.get("/?updated=1").content.decode()
     assert "Share this dataset" not in html
     assert (
-        "To save it and share it with others, run Bharat with <code>DJANGO_DEBUG=true</code>"
-        in html
+        "To save it and share it with others, run bharat-post-dir with "
+        "<code>DJANGO_DEBUG=true</code>" in html
     )
 
 
@@ -403,7 +403,7 @@ def upload_file(client, body, name="data.json", **fields):
     return client.post("/source/", data)
 
 
-def test_bharat_export_round_trips_with_its_provenance(client, directory, local):
+def test_export_round_trips_with_its_provenance(client, directory, local):
     from postal.models import Dataset, PostOffice
 
     Dataset.objects.update(source_period="On or before June 2023")

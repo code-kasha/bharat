@@ -124,7 +124,7 @@ def test_export_is_one_complete_versioned_file(api, directory):
     assert body["offices"][0].keys() == api.get("/api/v1/offices/").data["results"][0].keys()
     checksum = body["dataset"]["checksum"]
     assert response["ETag"] == f'"{checksum}"'
-    assert f"bharat-offices-undated-{checksum[:12]}.json" in response["Content-Disposition"]
+    assert f"post-offices-undated-{checksum[:12]}.json" in response["Content-Disposition"]
 
     compressed = api.get("/api/v1/export/", HTTP_ACCEPT_ENCODING="gzip")
     assert compressed["Content-Encoding"] == "gzip"

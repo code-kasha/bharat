@@ -27,7 +27,7 @@ def _etag(request):
 
 def filename(dataset):
     date = dataset.source_date.isoformat() if dataset.source_date else "undated"
-    return f"bharat-offices-{date}-{dataset.checksum[:12]}.json"
+    return f"post-offices-{date}-{dataset.checksum[:12]}.json"
 
 
 def _stream(dataset):

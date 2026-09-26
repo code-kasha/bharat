@@ -1,13 +1,11 @@
-# Bharat
-
 An Indian postal directory API built with Django REST Framework and SQLite. Look up the offices associated with a PIN, search by office or district, browse states and districts, and inspect where the data came from. Read the [project write-up](http://localhost:3000/projects/bharat) for background.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
-  <img src="docs/images/home-light.png" width="1280" alt="The Bharat lookup page: a search box for a PIN or place name, and an 'About this data' panel giving the source (verified by the project maintainer), the source date (on or before June 2023), the load date and 155,599 offices, 3 of them listed more than once.">
+  <img src="docs/images/home-light.png" width="1280" alt="The bharat-post-dir lookup page: a search box for a PIN or place name, and an 'About this data' panel giving the source (verified by the project maintainer), the source date (on or before June 2023), the load date and 155,599 offices, 3 of them listed more than once.">
 </picture>
 
-**Status:** API milestone. The repository ships `db.sqlite3` with the verified Bharat directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates. Its source date is on or before June 2023: the file was committed to this repository on 28 June 2023. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. Bharat runs in production mode by default, locally and in Docker; to use your own dataset, run it locally or [deploy it yourself](#deploying-it-yourself). No hosted deployment exists yet. A PIN may map to multiple offices. Bharat lists post offices and whether each one delivers mail; it cannot tell you whether a particular street address exists.
+**Status:** API milestone. The repository ships `db.sqlite3` with the verified directory: 155,599 offices from the project's 2023 snapshot. It has no coordinates. Its source date is on or before June 2023: the file was committed to this repository on 28 June 2023. `fetch_postal_data` replaces it with the Department of Posts' official [All India Pincode Directory](https://www.data.gov.in/resource/all-india-pincode-directory-till-last-month) once you have a data.gov.in API key. bharat-post-dir runs in production mode by default, locally and in Docker; to use your own dataset, run it locally or [deploy it yourself](#deploying-it-yourself). No hosted deployment exists yet. A PIN may map to multiple offices. bharat-post-dir lists post offices and whether each one delivers mail; it cannot tell you whether a particular street address exists.
 
 ## Get the code
 
@@ -62,12 +60,12 @@ The page is built for keyboard and screen-reader use. It has a skip link, a labe
 
 ## Changing the source
 
-Bharat is meant to run locally, so you can try or replace the directory with your own CSV or JSON file from the browser. Follow **change source** on the home page, or open [`/source/`](http://127.0.0.1:8000/source/). Choose the file, say where it came from, and optionally give either an exact source date or an approximate one such as "2024–2025". Leave both empty if you do not know; Bharat never guesses a date.
+bharat-post-dir is meant to run locally, so you can try or replace the directory with your own CSV or JSON file from the browser. Follow **change source** on the home page, or open [`/source/`](http://127.0.0.1:8000/source/). Choose the file, say where it came from, and optionally give either an exact source date or an approximate one such as "2024–2025". Leave both empty if you do not know; bharat-post-dir never guesses a date.
 
 The format is detected from the file's content, not its name:
 
 - **CSV** uses the directory's column layout: `Circle Name`, `Region Name`, `Division Name`, `Office Name`, `Pincode`, `OfficeType`, `Delivery`, `District` and `StateName`, in any order. Spaces, underscores and case in column names are ignored. `Latitude` and `Longitude` are optional; other columns are ignored.
-- **JSON** can be Bharat's own [whole-directory download](#downloading-the-whole-directory) (`{"dataset": ..., "offices": [...]}`), a data.gov.in API response (`{"records": [...]}`), or a plain list of offices. Offices use the CSV column names or Bharat's field names (`office_name`, `pincode`, `state`, `circle`, `region`, `division`, `office_type`, `delivery`, `district`, `latitude`, `longitude`). A Bharat download records its own source and date, which fill in the form fields you leave empty; anything you type wins.
+- **JSON** can be bharat-post-dir's own [whole-directory download](#downloading-the-whole-directory) (`{"dataset": ..., "offices": [...]}`), a data.gov.in API response (`{"records": [...]}`), or a plain list of offices. Offices use the CSV column names or bharat-post-dir's field names (`office_name`, `pincode`, `state`, `circle`, `region`, `division`, `office_type`, `delivery`, `district`, `latitude`, `longitude`). A bharat-post-dir download records its own source and date, which fill in the form fields you leave empty; anything you type wins.
 
 Either way the file must be UTF-8 (Excel's "CSV UTF-8") and at most 100 MB. Problems are listed by CSV line number or JSON record number.
 
@@ -78,7 +76,7 @@ What happens to a valid file depends on the mode:
 - **Default (production) mode: temporary.** The upload is stored in its own scratch SQLite file under `.uploads/` next to the database, named by a signed, HTTP-only cookie. Only that browser sees it, on the lookup page and in search; the API, the export and `db.sqlite3` keep the default dataset. The data panel shows the upload's details and when it will be deleted (after 24 hours), with a **Back to the default dataset** button. To save and share an upload, run with `DJANGO_DEBUG=true` and upload it again. A new upload replaces the browser's previous one, and at most 5 uploads are kept at once; the oldest is deleted first.
 - **Contributor mode (`DJANGO_DEBUG=true`): saved.** A valid file replaces every office and the source details in `db.sqlite3` (or whatever `SQLITE_PATH` names) in one transaction, and the write-ahead log is folded into the file so it can be committed as-is. The page then shows a **Share this dataset** note: the git commands to commit `db.sqlite3` on a branch, and a ready-made description (source, source date or period, office count, SHA256) for a pull request on this repository or for your own published fork. Pull requests may not be reviewed, so publishing your fork is just as good. To go back to the bundled data, run `git restore db.sqlite3`.
 
-The page has no login, so it is for local use. It is on by default when you run Bharat from a clone. A hosted site must set `BHARAT_ALLOW_SOURCE_CHANGE=false`; the Docker image, which is meant for hosting, already does. When it is off, `/source/` returns 404 and the link is hidden. To use your own dataset with the hosted setup, run Bharat locally or deploy it yourself. The forms are protected by Django's CSRF check.
+The page has no login, so it is for local use. It is on by default when you run bharat-post-dir from a clone. A hosted site must set `SITE_ALLOW_SOURCE_CHANGE=false`; the Docker image, which is meant for hosting, already does. When it is off, `/source/` returns 404 and the link is hidden. To use your own dataset with the hosted setup, run bharat-post-dir locally or deploy it yourself. The forms are protected by Django's CSRF check.
 
 ## API
 
@@ -132,7 +130,7 @@ The office above shows the response shape; its values are illustrative. `latitud
 curl -OJ --compressed http://127.0.0.1:8000/api/v1/export/
 ```
 
-- **Versioned:** the file is named `bharat-offices-<source date or "undated">-<first 12 characters of the SHA256>.json`, and the response ETag is the full dataset SHA256.
+- **Versioned:** the file is named `post-offices-<source date or "undated">-<first 12 characters of the SHA256>.json`, and the response ETag is the full dataset SHA256.
 - **Compressed:** clients that send `Accept-Encoding: gzip` (browsers, `curl --compressed`) receive 1.4 MB instead of 42.9 MB for the bundled directory.
 - **Not resent:** a client that sends its ETag back in `If-None-Match` gets `304 Not Modified` with no body until the dataset changes.
 - **Streamed:** the server reads offices in batches of 5,000 and never holds the whole directory in memory.
@@ -196,11 +194,11 @@ Environment variables are read by Django. `.env` files are not automatically loa
 | `DJANGO_DEBUG` | `false` (production mode); `true` is contributor mode and saves uploads over the database |
 | `DJANGO_SECRET_KEY` | Optional; without it a random key is created once in `.secret_key` next to the database (`/data/.secret_key` in the container) and reused |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1]`; comma-separated hostnames |
-| `SQLITE_PATH` | `db.sqlite3` in the repository; `/data/bharat.sqlite3` in the container |
-| `BHARAT_ALLOW_SOURCE_CHANGE` | `true` in a clone, `false` in the Docker image; enables the local [change-source page](#changing-the-source). Set `false` on any hosted site |
+| `SQLITE_PATH` | `db.sqlite3` in the repository; `/data/db.sqlite3` in the container |
+| `SITE_ALLOW_SOURCE_CHANGE` | `true` in a clone, `false` in the Docker image; enables the local [change-source page](#changing-the-source). Set `false` on any hosted site |
 | `DATA_GOV_IN_API_KEY` | Required only by `fetch_postal_data` |
 | `DJANGO_HTTPS` | `false`; `true` turns on the HTTPS redirect, HSTS (one year) and secure cookies. Only for a site served over HTTPS |
-| `DJANGO_CSRF_TRUSTED_ORIGINS` | Empty; comma-separated origins such as `https://bharat.example.com` for a hosted site |
+| `DJANGO_CSRF_TRUSTED_ORIGINS` | Empty; comma-separated origins such as `https://example.com` for a hosted site |
 | `TRUST_PROXY_HTTPS` | `false`; enable only behind a trusted TLS proxy that overwrites `X-Forwarded-Proto` (see [Deploying it yourself](#deploying-it-yourself)) |
 
 Only the bundled `db.sqlite3` is tracked; other databases and SQLite's `-wal`/`-shm` files are gitignored. Committing a refreshed `db.sqlite3` adds its full size to Git history each time.
@@ -224,26 +222,26 @@ These commands are identical in bash, zsh, PowerShell, cmd and Git Bash. From th
 
 ```sh
 docker build -t bharat-post-dir:local .
-docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat-post-dir:local
+docker run -d --rm --name app-demo -p 127.0.0.1:18000:8000 bharat-post-dir:local
 ```
 
-The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. It is built for hosting: it runs in production mode, and the change-source page is off (`BHARAT_ALLOW_SOURCE_CHANGE=false`). To try uploads in a local container, add `-e BHARAT_ALLOW_SOURCE_CHANGE=true` to `docker run`; never do that on a public server. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
+The image bundles `db.sqlite3` as `/data/db.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. It is built for hosting: it runs in production mode, and the change-source page is off (`SITE_ALLOW_SOURCE_CHANGE=false`). To try uploads in a local container, add `-e SITE_ALLOW_SOURCE_CHANGE=true` to `docker run`; never do that on a public server. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
 
 - [health](http://127.0.0.1:18000/health/) should report `ok`
 - [dataset](http://127.0.0.1:18000/api/v1/dataset/) should report `row_count: 155599`
 - [PIN 110001](http://127.0.0.1:18000/api/v1/pincodes/110001/) should return 23 offices
 - [API documentation](http://127.0.0.1:18000/api/docs/)
 
-When finished, run `docker stop bharat-demo`; `--rm` removes the container.
+When finished, run `docker stop app-demo`; `--rm` removes the container.
 
 Each new container starts from the bundled database. To keep data you fetch inside the container, add a named volume; on first use, Docker seeds an empty named volume with the bundled database. Set `DATA_GOV_IN_API_KEY` in your shell as shown in [Quick start](#quick-start). `-e DATA_GOV_IN_API_KEY` with no value passes it through without the key appearing in the command:
 
 ```sh
-docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat-post-dir:local
-docker exec -e DATA_GOV_IN_API_KEY bharat-demo python manage.py fetch_postal_data
+docker run -d --rm --name app-demo -v app-data:/data -p 127.0.0.1:18000:8000 bharat-post-dir:local
+docker exec -e DATA_GOV_IN_API_KEY app-demo python manage.py fetch_postal_data
 ```
 
-An existing volume keeps its own data and is not updated when you rebuild the image. Remove it with `docker volume rm bharat-data` to go back to the bundled database.
+An existing volume keeps its own data and is not updated when you rebuild the image. Remove it with `docker volume rm app-data` to go back to the bundled database.
 
 The image puts its virtualenv on `PATH`, so container commands are written as `python manage.py ...`. Avoid passing arguments that start with `/` (such as `/app/.venv/bin/python`): Git Bash on Windows rewrites them into Windows paths.
 
@@ -297,71 +295,71 @@ GitHub Actions installs the frozen lockfile, checks formatting/lint, runs tests,
 
 Run one container on a server with a persistent volume at `/data`, and put a TLS reverse proxy in front of it. SQLite must stay on that one volume: never share it across hosts or put it on a network filesystem. The image runs Gunicorn with two workers as an unprivileged user.
 
-The commands below are for a Linux server shell. Replace `bharat.example.com` with your domain, and point its DNS at the server first so the proxy can obtain a certificate.
+The commands below are for a Linux server shell. Replace `example.com` with your domain, and point its DNS at the server first so the proxy can obtain a certificate.
 
 1. Build the image on the server (or push it from elsewhere), and create a network the proxy and the app share:
 
    ```sh
    docker build -t bharat-post-dir:local .
-   docker network create bharat
+   docker network create app-net
    ```
 
-2. Start Bharat. It publishes no port, so it is reachable only through the proxy:
+2. Start bharat-post-dir. It publishes no port, so it is reachable only through the proxy:
 
    ```sh
-   docker run -d --name bharat --restart unless-stopped --network bharat \
-     -v bharat-data:/data \
-     -e DJANGO_ALLOWED_HOSTS=bharat.example.com \
-     -e DJANGO_CSRF_TRUSTED_ORIGINS=https://bharat.example.com \
+   docker run -d --name app --restart unless-stopped --network app-net \
+     -v app-data:/data \
+     -e DJANGO_ALLOWED_HOSTS=example.com \
+     -e DJANGO_CSRF_TRUSTED_ORIGINS=https://example.com \
      -e DJANGO_HTTPS=true -e TRUST_PROXY_HTTPS=true \
-     -e BHARAT_ALLOW_SOURCE_CHANGE=false \
+     -e SITE_ALLOW_SOURCE_CHANGE=false \
      bharat-post-dir:local
    ```
 
-   On first use the empty `bharat-data` volume is seeded with the bundled directory. The secret key is created once in `/data/.secret_key` on the volume, so it survives restarts; set `DJANGO_SECRET_KEY` instead if you prefer to manage it. `BHARAT_ALLOW_SOURCE_CHANGE=false` is the image's default, repeated so a hosted site never enables the unauthenticated change-source page. To serve your own dataset, load it locally in contributor mode first and build the image from that `db.sqlite3`, or run `fetch_postal_data` in the container.
+   On first use the empty `app-data` volume is seeded with the bundled directory. The secret key is created once in `/data/.secret_key` on the volume, so it survives restarts; set `DJANGO_SECRET_KEY` instead if you prefer to manage it. `SITE_ALLOW_SOURCE_CHANGE=false` is the image's default, repeated so a hosted site never enables the unauthenticated change-source page. To serve your own dataset, load it locally in contributor mode first and build the image from that `db.sqlite3`, or run `fetch_postal_data` in the container.
 
 3. Put [Caddy](https://caddyserver.com/) in front for HTTPS. Save this as `Caddyfile`:
 
    ```text
-   bharat.example.com {
-       reverse_proxy bharat:8000
+   example.com {
+       reverse_proxy app:8000
    }
    ```
 
    ```sh
-   docker run -d --name caddy --restart unless-stopped --network bharat \
+   docker run -d --name caddy --restart unless-stopped --network app-net \
      -p 80:80 -p 443:443 \
      -v ./Caddyfile:/etc/caddy/Caddyfile:ro -v caddy-data:/data \
      caddy:2
    ```
 
-   Caddy obtains and renews the certificate, and sets `X-Forwarded-Proto` itself, replacing any value a client sends. That is what makes `TRUST_PROXY_HTTPS=true` safe. Without it, `DJANGO_HTTPS=true` would redirect forever, because Bharat would see plain HTTP from the proxy. Only use `TRUST_PROXY_HTTPS` behind a proxy that overwrites the header like this.
+   Caddy obtains and renews the certificate, and sets `X-Forwarded-Proto` itself, replacing any value a client sends. That is what makes `TRUST_PROXY_HTTPS=true` safe. Without it, `DJANGO_HTTPS=true` would redirect forever, because bharat-post-dir would see plain HTTP from the proxy. Only use `TRUST_PROXY_HTTPS` behind a proxy that overwrites the header like this.
 
-4. Check `https://bharat.example.com/health/` (it reports `ok`), the lookup page and `/api/v1/dataset/`. `/source/` should return 404. HSTS tells browsers to insist on HTTPS for a year, so enable `DJANGO_HTTPS` only once HTTPS works.
+4. Check `https://example.com/health/` (it reports `ok`), the lookup page and `/api/v1/dataset/`. `/source/` should return 404. HSTS tells browsers to insist on HTTPS for a year, so enable `DJANGO_HTTPS` only once HTTPS works.
 
 **Backups.** The directory and the secret key live on the volume. Copy a consistent snapshot of the database with SQLite's backup API, then copy it off the server:
 
 ```sh
-docker exec bharat python -c "import sqlite3; sqlite3.connect('/data/bharat.sqlite3').backup(sqlite3.connect('/data/backup.sqlite3'))"
-docker cp bharat:/data/backup.sqlite3 ./bharat-backup.sqlite3
+docker exec app python -c "import sqlite3; sqlite3.connect('/data/db.sqlite3').backup(sqlite3.connect('/data/backup.sqlite3'))"
+docker cp app:/data/backup.sqlite3 ./db-backup.sqlite3
 ```
 
 Back up before every update, because migrations run automatically when the container starts.
 
-**Updates.** Build or pull the new image, then replace the container with the same volume and settings: `docker stop bharat && docker rm bharat`, then the `docker run` from step 2. The volume keeps its data; a rebuilt image does not replace an existing volume's directory. To switch to the directory bundled in a new image, remove the volume (`docker volume rm bharat-data`) before starting the container.
+**Updates.** Build or pull the new image, then replace the container with the same volume and settings: `docker stop app && docker rm app`, then the `docker run` from step 2. The volume keeps its data; a rebuilt image does not replace an existing volume's directory. To switch to the directory bundled in a new image, remove the volume (`docker volume rm app-data`) before starting the container.
 
-**Rollback.** Migrations only move forward, so roll back the image and the data together. Stop and remove the container, then restore the backup into the volume from the folder that holds `bharat-backup.sqlite3`:
+**Rollback.** Migrations only move forward, so roll back the image and the data together. Stop and remove the container, then restore the backup into the volume from the folder that holds `db-backup.sqlite3`:
 
 ```sh
-docker run --rm -v bharat-data:/data -v "$PWD":/backup --entrypoint sh bharat-post-dir:local \
-  -c "rm -f /data/bharat.sqlite3 /data/bharat.sqlite3-wal /data/bharat.sqlite3-shm && cp /backup/bharat-backup.sqlite3 /data/bharat.sqlite3"
+docker run --rm -v app-data:/data -v "$PWD":/backup --entrypoint sh bharat-post-dir:local \
+  -c "rm -f /data/db.sqlite3 /data/db.sqlite3-wal /data/db.sqlite3-shm && cp /backup/db-backup.sqlite3 /data/db.sqlite3"
 ```
 
-This runs as the image's unprivileged user, so the restored file stays writable by Bharat; a restore done as root (for example with a plain `alpine` container) leaves a database the app can read but not update. Then start the previous image tag with the step 2 command.
+This runs as the image's unprivileged user, so the restored file stays writable by bharat-post-dir; a restore done as root (for example with a plain `alpine` container) leaves a database the app can read but not update. Then start the previous image tag with the step 2 command.
 
 **Verified** on 26 September 2026 with Docker Engine 29.3.1 and Caddy 2 in a Linux sandbox, using `localhost` and Caddy's local certificate in place of a domain: HTTP-to-HTTPS redirect, HSTS and security headers, health, the lookup page and search, the PIN API, API docs, the gzipped export with `304` on its ETag, `/source/` off, unknown hosts refused, and data and the secret key surviving a restart and a container replacement, plus the backup and rollback commands above. Not verified there: a real domain's public certificate, its renewal, and the server's firewall. (The sandbox needed a registry mirror and its proxy certificate to build; neither is part of the image.)
 
-**Support window.** Bharat uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running Bharat publicly after that.
+**Support window.** bharat-post-dir uses Django 5.2 LTS, whose security support ends in April 2028. A fork should upgrade Django before running bharat-post-dir publicly after that.
 
 ## Next milestones
 
@@ -370,6 +368,6 @@ This runs as the image's unprivileged user, so the restored file stays writable 
 
 ## Contributing and license
 
-Bharat is complete as of v1.0.0 and not actively maintained: it works as-is, and issues or pull requests may go unanswered. Fork it freely. The code is under the [MIT License](LICENSE) with no extra conditions. Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
+bharat-post-dir is complete as of v1.0.0 and not actively maintained: it works as-is, and issues or pull requests may go unanswered. Fork it freely. The code is under the [MIT License](LICENSE) with no extra conditions. Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
 
 If you update the dataset, please share it back, either with a pull request or by publishing your fork. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how, and how to run the checks. A mention is appreciated, never required.

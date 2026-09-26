@@ -1,4 +1,4 @@
-# Bharat – work index (written 26 September 2026)
+# bharat-post-dir – work index (written 26 September 2026)
 
 Pick up from here. Nothing below is started unless marked done.
 
@@ -22,13 +22,14 @@ Pick up from here. Nothing below is started unless marked done.
 - **Completely free to use:** MIT, no accounts, API keys, paid tiers, ads or tracking for anyone using the code, the image, the data or the demo.
 - **Production mode (`DEBUG=false`) is the default everywhere**, including `runserver` and Docker. Contributor mode is opt-in with `DJANGO_DEBUG=true`.
 - **Docker is for hosting.** It runs in production mode on a real server and domain.
-- **Hosted site: change source is off** (`BHARAT_ALLOW_SOURCE_CHANGE=false` in the production config). The docs must say: to use your own dataset, **run it locally or deploy it yourself**.
+- **Hosted site: change source is off** (`SITE_ALLOW_SOURCE_CHANGE=false` in the production config). The docs must say: to use your own dataset, **run it locally or deploy it yourself**.
 - **Local clone, default mode:** uploads are **temporary**. They affect only that browser (web page and search); `db.sqlite3` is untouched. Provide "Back to the default dataset".
 - **Local clone, `DJANGO_DEBUG=true`:** uploads **replace `db.sqlite3`**, then show a note asking the user to open a PR to share the dataset.
 - **Conflicting duplicates are always kept** (government data; duplicates can be legitimate). Report how many offices are listed more than once. Exact identical rows are still merged. Applies to uploads and to `fetch_postal_data`.
-- **Uploads accept CSV and all JSON shapes:** Bharat's export (`{"dataset", "offices"}`, prefills source/date), the data.gov.in API response (`{"records": [...]}`), and a plain list of offices (CSV column names or Bharat field names).
+- **Uploads accept CSV and all JSON shapes:** bharat-post-dir's export (`{"dataset", "offices"}`, prefills source/date), the data.gov.in API response (`{"records": [...]}`), and a plain list of offices (CSV column names or bharat-post-dir field names).
 - **License and contributions:** MIT, no extra constraints. If you update the dataset, please share it back: open a PR **or publish your fork** (PRs may not be reviewed). A mention is appreciated, never required (friendly tone).
 - **Repository name:** rename `code-kasha/bharat` to `code-kasha/bharat-post-dir`, on GitHub and everywhere it is referenced (task 10).
+- **Naming (decided 26 September 2026):** the project is called `bharat-post-dir` wherever people read its name (pages, docs, API title). Technical names are generic: `SITE_ALLOW_SOURCE_CHANGE`, cookie `dataset_upload`, `/data/db.sqlite3`, export `post-offices-….json`, containers `app`/`app-demo`, volume `app-data`, network `app-net`. Django packages stay `config` and `postal`. The README has no name heading; it starts with the description.
 - **First release is `v1.0.0`**, published only after everything else is done.
 - **Hosting: a free-tier service with a planned end date** (task 15), then a planned shutdown (task 16). The exact platform and end date are chosen at deploy time.
 - **Community files stay minimal:** nothing that promises ongoing support (no `SECURITY.md` with response times, no changelog beyond 1.0). Issues stay open with a note that they may go unanswered.
@@ -41,7 +42,7 @@ Pick up from here. Nothing below is started unless marked done.
    - HTTPS redirect, HSTS and secure cookies only when explicitly enabled (e.g. `DJANGO_HTTPS=true`), so `http://localhost` works in production mode.
    - Add `DJANGO_CSRF_TRUSTED_ORIGINS` for the hosted domain. Check error pages and the Swagger UI (CDN assets) with `DEBUG=false`.
    - Update `.env.example`: it still sets `DJANGO_DEBUG=true`. Deliberately left until this task, because switching it earlier breaks anyone using it.
-2. **Temporary uploads (production mode, local)** — DONE (`release-v1`). `postal/uploads.py`: one scratch SQLite file per browser under `.uploads/` next to the database, signed HTTP-only cookie, 24-hour expiry, at most 5 kept (oldest deleted first), 100 MB upload cap. Change source is now on by default in a clone; the Dockerfile sets `BHARAT_ALLOW_SOURCE_CHANGE=false` because the image is for hosting. README "Changing the source" and AGENTS.md updated; full docs remain task 7.
+2. **Temporary uploads (production mode, local)** — DONE (`release-v1`). `postal/uploads.py`: one scratch SQLite file per browser under `.uploads/` next to the database, signed HTTP-only cookie, 24-hour expiry, at most 5 kept (oldest deleted first), 100 MB upload cap. Change source is now on by default in a clone; the Dockerfile sets `SITE_ALLOW_SOURCE_CHANGE=false` because the image is for hosting. README "Changing the source" and AGENTS.md updated; full docs remain task 7.
    - Store each upload in its own scratch SQLite file under a temp/data directory, keyed by a signed cookie. Expire and delete after a set time; cap the size.
    - The lookup page and search read from it; the source label shows the uploaded file's details. The API and export keep serving the default dataset.
    - "Back to the default dataset" button. Keep one request per page.
@@ -53,7 +54,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Importer: stop rejecting conflicting identities; count offices listed more than once (e.g. `repeated_identity_count` on `Dataset`, via a generated migration) and show it on the page, the API and the upload result.
    - Update tests that expect rejection. Re-upload the original 155,599-row file to confirm it now loads (it has 3 such offices).
    - Update the AGENTS.md invariant ("reject conflicting office identities").
-5. **JSON uploads** — DONE (`release-v1`). `importer.parse_upload` detects CSV or JSON from content; Bharat field names are accepted as aliases everywhere. Verified with the full 43 MB export uploaded back (source left empty, provenance carried over).
+5. **JSON uploads** — DONE (`release-v1`). `importer.parse_upload` detects CSV or JSON from content; bharat-post-dir field names are accepted as aliases everywhere. Verified with the full 43 MB export uploaded back (source left empty, provenance carried over).
     detect the format from content; support the three shapes above; same validation and line/record-numbered errors; tests for each shape.
 6. **Contributing and license** — DONE (`release-v1`). `CONTRIBUTING.md` added; README "License" became "Contributing and license".
    - Add `CONTRIBUTING.md`: the project is finished and not actively maintained; MIT, no constraints; fork freely; how to share an updated dataset (PR with `db.sqlite3` and its source details, or publish your fork); a mention is appreciated.
@@ -63,12 +64,12 @@ Pick up from here. Nothing below is started unless marked done.
    - A production deployment section: `docker run` with the production env vars, a persistent `/data` volume, a reverse proxy for TLS (Caddy example), `DJANGO_ALLOWED_HOSTS`, `DJANGO_CSRF_TRUSTED_ORIGINS`, HTTPS flags, backups, updates and rollback.
    - Refresh AGENTS.md and the performance/request-count numbers if anything changes.
    - State the one known expiry: Django 5.2's security support ends in April 2028; a fork should upgrade Django before running it publicly after that.
-8. **Deploy once with Docker (verification)** — DONE in the cloud sandbox (`localhost` + Caddy local CA). Everything in the README steps passed. Found and fixed one README bug: the rollback restore ran as root and left `bharat.sqlite3` unwritable by `appuser`; it now restores with the Bharat image. Sandbox-only workarounds (not in the repo): a `mirror.gcr.io` registry mirror (Docker Hub 429), `pkg-containers.githubusercontent.com` allowed in the environment's network settings, and a build with `--network host` + the proxy CA mounted only for `uv sync`. Needs a real domain to verify: public certificate issuance and renewal, DNS, firewall. **Still to do: the user runs it on their own machine** (see checklist below).
-   - Local checklist (Docker Desktop, no workarounds): `docker build -t bharat:local .`; then steps 2–4 of README "Deploying it yourself" with `localhost` for the domain (`DJANGO_ALLOWED_HOSTS=localhost`, `DJANGO_CSRF_TRUSTED_ORIGINS=https://localhost`, Caddyfile site `localhost`). Open `https://localhost/` (accept or trust Caddy's local certificate), search `110001` (23 results), check `/health/`, `/api/v1/dataset/` (155599, repeated 3), `/source/` (404), and download `/api/v1/export/`. Then `docker restart bharat`, and try the backup and rollback commands. On Windows, run the multi-line commands in Git Bash or put them on one line.
+8. **Deploy once with Docker (verification)** — DONE in the cloud sandbox (`localhost` + Caddy local CA). Everything in the README steps passed. Found and fixed one README bug: the rollback restore ran as root and left `bharat.sqlite3` unwritable by `appuser`; it now restores with the bharat-post-dir image. Sandbox-only workarounds (not in the repo): a `mirror.gcr.io` registry mirror (Docker Hub 429), `pkg-containers.githubusercontent.com` allowed in the environment's network settings, and a build with `--network host` + the proxy CA mounted only for `uv sync`. Needs a real domain to verify: public certificate issuance and renewal, DNS, firewall. **Still to do: the user runs it on their own machine** (see checklist below).
+   - Local checklist (Docker Desktop, no workarounds): `docker build -t bharat-post-dir:local .`; then steps 2–4 of README "Deploying it yourself" with `localhost` for the domain (`DJANGO_ALLOWED_HOSTS=localhost`, `DJANGO_CSRF_TRUSTED_ORIGINS=https://localhost`, Caddyfile site `localhost`). Open `https://localhost/` (accept or trust Caddy's local certificate), search `110001` (23 results), check `/health/`, `/api/v1/dataset/` (155599, repeated 3), `/source/` (404), and download `/api/v1/export/`. Then `docker restart app`, and try the backup and rollback commands. On Windows, run the multi-line commands in Git Bash or put them on one line.
    - No server or domain is available, so run the image exactly as the README's production instructions say: production mode, a volume, and a local Caddy proxy with HTTPS in front.
    - Check the lookup page, search, export, health, that `/source/` is off, and that data survives a restart. Report anything that needs a real domain to verify.
 9. **Checkpoint** — DONE. All checks pass locally (113 tests); CI green on every `release-v1` push through `3d529df`. README validation notes updated. CI runs on every push and pull request.
-10. **Rename the repository to `bharat-post-dir`** — DONE. Renamed on GitHub by the user; references updated (README clone URL, folder and image names, `REPOSITORY_URL`, `pyproject.toml` and regenerated `uv.lock`). Kept on purpose: container name `bharat`, volume `bharat-data` (renaming would orphan existing data), Django packages. The "memory note" lives outside this repository; update it on the machine that has it. (confirm with the user right before running it; it is public-facing)
+10. **Rename the repository to `bharat-post-dir`** — DONE. Renamed on GitHub by the user; references updated (README clone URL, folder and image names, `REPOSITORY_URL`, `pyproject.toml` and regenerated `uv.lock`). Kept on purpose: container name `bharat`, volume `app-data` (renaming would orphan existing data), Django packages. The "memory note" lives outside this repository; update it on the machine that has it. (confirm with the user right before running it; it is public-facing)
    - `gh repo rename bharat-post-dir`; update the local `origin` remote. GitHub redirects old URLs, but update every reference anyway.
    - References to update: README clone URL and links, the PR link in the "Share this dataset" note, `pyproject.toml` name, Docker image names in docs (`bharat:local` to `bharat-post-dir:local`), `ghcr.io/code-kasha/bharat-post-dir` (CI derives it from the repo name), AGENTS.md, CONTRIBUTING.md and the memory note.
    - Keep the internal Django package names (`config`, `postal`) as they are.
@@ -77,12 +78,12 @@ Pick up from here. Nothing below is started unless marked done.
    - `phone.png`: "The lookup page on a phone: the data panel's labels and values stacked, the search box with 110001, and the start of 23 results."
    - `change-source.png`: "The change-source page: a CSV or JSON file, its source, an exact or approximate source date, and an 'Upload and use in this browser' button, with a note that the upload is temporary."
    - `share-dataset.png`: "The 'Share this dataset' note after a saved upload: git commands to commit db.sqlite3 on a branch, and a ready-made description with source, date, office count and SHA256."
-   - `social-preview.png`: "Bharat Post Directory: which India Post offices sit behind a PIN code or place name. 155,599 offices, lookup page, JSON API, one-file export, Docker and SQLite."
+   - `social-preview.png`: "bharat-post-dir: which India Post offices sit behind a PIN code or place name. 155,599 offices, lookup page, JSON API, one-file export, Docker and SQLite."
    - Home page (light and dark), "Delhi" search results, phone view, change-source page, "Share this dataset" note, API docs.
    - Save under `docs/images/`, compress to about 200 KB or less each, with alt text. The README hero uses `<picture>` to follow the reader's light or dark theme.
    - Make a 1280×640 social preview image. The user uploads it in GitHub Settings → Social preview (there is no API for it).
 12. **README rewrite and `docs/`**
-   - New opening line (draft; the user may reword): "**Bharat Post Directory**: a helper that tells you which India Post offices sit behind a PIN code or place name, ready to drop into your own applications as a JSON API or a Docker image."
+   - No name heading (decided): the README starts directly with the description. Opening line (draft; the user may reword): "A helper that tells you which India Post offices sit behind a PIN code or place name, ready to drop into your own applications as a JSON API or a Docker image."
    - Right after it, a highlights list of what we built:
      - 155,599 offices bundled; works right after cloning.
      - Accessible lookup page, one request per page, no JavaScript.
@@ -114,7 +115,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Set the version to 1.0.0 in `pyproject.toml` and the OpenAPI settings; write the release notes (a single `CHANGELOG.md` entry for 1.0.0 at most).
    - Extend the tag-triggered CI job: create the GitHub Release after all checks pass, attaching `db.sqlite3`, the gzipped JSON export and `SHA256SUMS`.
    - Publish `ghcr.io/code-kasha/bharat-post-dir` as `v1.0.0` and `latest`, for amd64 and arm64, with OCI labels linking the repository, license and description. Make the package public.
-   - No PyPI package: Bharat is an application, not a library.
+   - No PyPI package: bharat-post-dir is an application, not a library.
 15. **Deploy the demo on a free tier, with a planned end date**
    - The hosted demo is read-only (change source is off), so the data can stay baked into the image: no persistent disk is needed, which widens the free-tier choices. The generated secret key may live on the container's temporary disk.
    - Candidates to check at deploy time (free tiers change often; verify current terms, limits and that no card or paid plan is required): Render free web service, Koyeb, Google Cloud Run, Hugging Face Spaces (Docker). Cold starts after idle are acceptable for a demo.
