@@ -3,7 +3,7 @@ LABEL org.opencontainers.image.title="bharat-post-dir" \
       org.opencontainers.image.description="Indian PIN code and post office directory: lookup page, JSON API and one-file export. Django + SQLite." \
       org.opencontainers.image.source="https://github.com/code-kasha/bharat-post-dir" \
       org.opencontainers.image.licenses="MIT"
-COPY --from=ghcr.io/astral-sh/uv:0.12.17 /uv /usr/local/bin/uv
+COPY --from=ghcr.io/astral-sh/uv:0.12.19 /uv /usr/local/bin/uv
 WORKDIR /app
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev

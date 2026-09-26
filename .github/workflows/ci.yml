@@ -4,12 +4,12 @@ permissions:
   contents: read
 jobs:
   checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
-          version: '0.12.17'
+          version: '0.12.19'
           enable-cache: true
       - run: uv sync --frozen --python 3.13
       - run: uv run ruff check .
@@ -23,12 +23,12 @@ jobs:
   publish:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - name: Tag matches the package version
         shell: bash
         run: |
@@ -37,9 +37,9 @@ jobs:
             echo "::error::Tag $GITHUB_REF_NAME does not match version $version in pyproject.toml"
             exit 1
           fi
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: docker/setup-qemu-action@v4.4.0
+      - uses: docker/setup-buildx-action@v4.4.1
+      - uses: docker/login-action@v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -48,7 +48,7 @@ jobs:
         id: image
         shell: bash
         run: echo "name=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7.4.0
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -67,14 +67,14 @@ jobs:
   release:
     # Only after every check has passed and the image is published.
     needs: publish
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7.0.1
+      - uses: astral-sh/setup-uv@v10.2.0
         with:
-          version: '0.12.17'
+          version: '0.12.19'
           enable-cache: true
       - run: uv sync --frozen --python 3.13
       - name: Release assets
