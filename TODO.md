@@ -55,7 +55,7 @@ Pick up from here. Nothing below is started unless marked done.
    - Update the AGENTS.md invariant ("reject conflicting office identities").
 5. **JSON uploads** — DONE (`release-v1`). `importer.parse_upload` detects CSV or JSON from content; Bharat field names are accepted as aliases everywhere. Verified with the full 43 MB export uploaded back (source left empty, provenance carried over).
     detect the format from content; support the three shapes above; same validation and line/record-numbered errors; tests for each shape.
-6. **Contributing and license**
+6. **Contributing and license** — DONE (`release-v1`). `CONTRIBUTING.md` added; README "License" became "Contributing and license".
    - Add `CONTRIBUTING.md`: the project is finished and not actively maintained; MIT, no constraints; fork freely; how to share an updated dataset (PR with `db.sqlite3` and its source details, or publish your fork); a mention is appreciated.
    - Add a README "Contributing and license" section linking it.
 7. **Docs**

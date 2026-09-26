@@ -287,6 +287,8 @@ Hosting is out of scope for now; the project is meant to run locally, with or wi
 - Run the first live fetch from data.gov.in once an API key is available (blocked by the broken sign-up captcha; see [Quick start](#quick-start)).
 - Choose a hosting platform when a public deployment is needed.
 
-## License
+## Contributing and license
 
-The code is released under the [MIT License](LICENSE). Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
+Bharat is complete as of v1.0.0 and not actively maintained: it works as-is, and issues or pull requests may go unanswered. Fork it freely. The code is under the [MIT License](LICENSE) with no extra conditions. Data fetched from data.gov.in is published under the Government Open Data License – India; keep its attribution requirements.
+
+If you update the dataset, please share it back, either with a pull request or by publishing your fork. [`CONTRIBUTING.md`](CONTRIBUTING.md) explains how, and how to run the checks. A mention is appreciated, never required.
