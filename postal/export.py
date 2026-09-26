@@ -30,7 +30,8 @@ def filename(dataset):
     return f"post-offices-{date}-{dataset.checksum[:12]}.json"
 
 
-def _stream(dataset):
+def stream(dataset):
+    """Yield the export document in pieces: dataset metadata, then every office."""
     meta = json.dumps(DatasetSerializer(dataset).data, cls=DjangoJSONEncoder)
     yield f'{{"dataset":{meta},"offices":['
     rows = PostOffice.objects.order_by("pincode", "state", "district", "office_name", "id")
@@ -61,7 +62,7 @@ def export(request):
     dataset = _dataset()
     if dataset is None:
         raise Http404("No dataset has been imported.")
-    response = StreamingHttpResponse(_stream(dataset), content_type="application/json")
+    response = StreamingHttpResponse(stream(dataset), content_type="application/json")
     response["Content-Disposition"] = f'attachment; filename="{filename(dataset)}"'
     response["Cache-Control"] = "no-cache"
     return response

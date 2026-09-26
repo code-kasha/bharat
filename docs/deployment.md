@@ -127,4 +127,12 @@ Only the bundled `db.sqlite3` is tracked; other databases and SQLite's `-wal`/`-
 
 ## CI and releases
 
-GitHub Actions installs the frozen lockfile, checks formatting/lint, runs tests, validates migrations/OpenAPI and builds the container. A `v*` Git tag publishes a versioned image to `ghcr.io/<owner>/<repository>` only after these checks pass. CI does not contact data.gov.in. No image has been published yet.
+GitHub Actions runs on every push and pull request: it installs the frozen lockfile, checks formatting and lint, runs the tests, validates migrations and the OpenAPI schema, and builds the container. CI never contacts data.gov.in.
+
+Pushing a `v*` tag makes a release, in order, and only if each step succeeds:
+
+1. The same checks.
+2. **The image:** the tag must match the version in `pyproject.toml`. The image is built for amd64 and arm64 and pushed to `ghcr.io/<owner>/<repository>` as the tag and as `latest`, with OCI labels for its source, license, version and revision.
+3. **The GitHub Release:** its notes are the tag's `CHANGELOG.md` entry, and it carries `db.sqlite3`, the gzipped export (from `manage.py export_directory`) and `SHA256SUMS`.
+
+To release a fork, set the version in `pyproject.toml`, add a `CHANGELOG.md` entry, and push the tag, for example `git tag v1.0.1 && git push origin v1.0.1`. A new package on GitHub's registry starts private; make it public under the package's settings.

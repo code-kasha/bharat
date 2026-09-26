@@ -1,3 +1,5 @@
+from io import StringIO
+
 import pytest
 from conftest import office
 
@@ -146,3 +148,38 @@ def test_docs_page_pins_swagger_ui(api):
     html = api.get("/api/docs/").content.decode()
     assert "swagger-ui-dist@5.33.0/swagger-ui-bundle.js" in html
     assert "@latest" not in html
+
+
+def test_export_command_writes_the_served_document(api, records, tmp_path):
+    import gzip
+    import hashlib
+
+    from django.core.management import call_command
+
+    replace_dataset(parse_records(records), source="fixture")
+    served = b"".join(api.get("/api/v1/export/").streaming_content)
+    call_command("export_directory", "--output-dir", str(tmp_path), stdout=StringIO())
+    (path,) = tmp_path.iterdir()
+    assert path.name.startswith("post-offices-undated-") and path.name.endswith(".json.gz")
+    assert gzip.decompress(path.read_bytes()) == served
+    # Byte-identical on a second run, so the release's SHA256SUMS is reproducible.
+    first = hashlib.sha256(path.read_bytes()).hexdigest()
+    call_command("export_directory", "--output-dir", str(tmp_path), stdout=StringIO())
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == first
+
+
+def test_export_command_needs_a_dataset(tmp_path):
+    from django.core.management import call_command
+    from django.core.management.base import CommandError
+
+    with pytest.raises(CommandError, match="No dataset"):
+        call_command("export_directory", "--output-dir", str(tmp_path))
+
+
+def test_api_version_matches_the_package(api):
+    import tomllib
+    from pathlib import Path
+
+    project = tomllib.loads((Path(__file__).parent.parent / "pyproject.toml").read_text())
+    schema = api.get("/api/schema/", {"format": "json"}).json()
+    assert schema["info"]["version"] == project["project"]["version"] == "1.0.0"

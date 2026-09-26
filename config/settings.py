@@ -1,4 +1,5 @@
 import os
+import tomllib
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
@@ -88,11 +89,13 @@ REST_FRAMEWORK = {
     "PAGE_SIZE": 25,
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
 }
+# One version for the package and the API docs.
+VERSION = tomllib.loads((BASE_DIR / "pyproject.toml").read_text())["project"]["version"]
 SWAGGER_UI_VERSION = "5.33.0"
 SPECTACULAR_SETTINGS = {
     "TITLE": "bharat-post-dir API",
     "DESCRIPTION": "Read-only postal lookup. Provenance is available at /api/v1/dataset/.",
-    "VERSION": "0.3.0",
+    "VERSION": VERSION,
     "SERVE_INCLUDE_SCHEMA": False,
     # Pin the docs page's CDN assets: drf-spectacular defaults to @latest, which changes unseen.
     "SWAGGER_UI_DIST": f"https://cdn.jsdelivr.net/npm/swagger-ui-dist@{SWAGGER_UI_VERSION}",

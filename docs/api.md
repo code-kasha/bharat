@@ -84,4 +84,4 @@ curl -OJ --compressed http://127.0.0.1:8000/api/v1/export/
 - **Not resent:** a client that sends its ETag back in `If-None-Match` gets `304 Not Modified` with no body until the dataset changes.
 - **Streamed:** the server reads offices in batches of 5,000 and never holds the whole directory in memory.
 
-The download can be uploaded again as a dataset, and it carries its own source and date; see [Your own dataset](datasets.md#your-own-dataset).
+`uv run python manage.py export_directory --output-dir .` writes the same document to a gzipped file without a web server, byte-identical for the same dataset. The download can be uploaded again as a dataset, and it carries its own source and date; see [Your own dataset](datasets.md#your-own-dataset).
