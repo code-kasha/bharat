@@ -44,10 +44,16 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 ROOT_URLCONF = "config.urls"
-# The change-source page replaces the directory from an uploaded CSV without authentication,
-# so it is for local use: on by default only while DEBUG is on.
-ALLOW_SOURCE_CHANGE = env_flag("BHARAT_ALLOW_SOURCE_CHANGE", DEBUG)
+# The change-source page has no authentication, so it is for local use; hosted sites
+# (including the Docker image) set BHARAT_ALLOW_SOURCE_CHANGE=false.
+ALLOW_SOURCE_CHANGE = env_flag("BHARAT_ALLOW_SOURCE_CHANGE", True)
 SOURCE_UPLOAD_MAX_BYTES = 100 * 1024 * 1024
+# Contributor mode saves an upload over the database. Otherwise each upload is temporary: a
+# scratch SQLite file that only the uploading browser reads, deleted after a set time.
+SAVE_UPLOADS = DEBUG
+TEMPORARY_UPLOAD_DIR = DATABASE_PATH.parent / ".uploads"
+TEMPORARY_UPLOAD_HOURS = 24
+TEMPORARY_UPLOAD_LIMIT = 5
 WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
     {

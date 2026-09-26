@@ -6,7 +6,14 @@
 
 {% block content %}
   {% if updated and dataset %}
+  {% if upload %}
+  <p class="notice" role="status">Temporary dataset loaded: {{ dataset.row_count }} offices. Only this browser sees it.</p>
+  {% else %}
   <p class="notice" role="status">Source updated: {{ dataset.row_count }} offices loaded.</p>
+  {% endif %}
+  {% endif %}
+  {% if upload_expired %}
+  <p class="notice" role="status">Your temporary upload has expired or was removed, so this page shows the default dataset again.</p>
   {% endif %}
 
   <section class="source" aria-labelledby="source-heading">
@@ -21,7 +28,18 @@
       <dd><time datetime="{{ dataset.imported_at|date:'c' }}">{{ dataset.imported_at|date:"j F Y" }}</time></dd>
       <dt>Offices</dt>
       <dd>{{ dataset.row_count }}</dd>
+      {% if upload %}
+      <dt>Kept until</dt>
+      <dd><time datetime="{{ upload.expires|date:'c' }}">{{ upload.expires|date:"j F Y, H:i e" }}</time></dd>
+      {% endif %}
     </dl>
+    {% if upload %}
+    <p>This is a temporary upload: only this browser sees it, on this page and in search. The <a href="/api/docs/">API</a> and the whole-directory download keep serving the default dataset.</p>
+    <form method="post" action="/source/default/" style="margin: .5rem 0 0;">
+      {% csrf_token %}
+      <button type="submit">Back to the default dataset</button>
+    </form>
+    {% endif %}
     {% else %}
     <p style="margin: 0;">No dataset has been loaded, so searches return nothing.{% if allow_source_change %} <a href="/source/">Add a source</a>.{% endif %}</p>
     {% endif %}

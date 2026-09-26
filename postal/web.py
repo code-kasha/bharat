@@ -3,7 +3,9 @@ from django.conf import settings
 from django.core.paginator import Paginator
 from django.http import Http404, HttpResponse
 from django.shortcuts import redirect, render
+from django.views.decorators.http import require_POST
 
+from postal import uploads
 from postal.importer import ImportFailure, parse_csv, replace_dataset
 from postal.models import Dataset
 from postal.queries import is_pin, offices_for_pin, search_offices
@@ -13,10 +15,22 @@ PAGE_SIZE = 25
 
 def lookup(request):
     """Server-rendered search: one request per page, no scripts or external assets."""
+    upload = uploads.active(request)
+    with uploads.reading(upload) as using:
+        response = _lookup(request, upload, using)
+    if upload is None and bool(request.COOKIES.get(uploads.COOKIE)):
+        # The upload expired or was removed: fall back to the default dataset and say so.
+        response.delete_cookie(uploads.COOKIE)
+    return response
+
+
+def _lookup(request, upload, using):
     query = request.GET.get("q", "").strip()
     context = {
         "query": query,
-        "dataset": Dataset.objects.filter(pk=1).first(),
+        "dataset": Dataset.objects.using(using).filter(pk=1).first(),
+        "upload": upload,
+        "upload_expired": upload is None and bool(request.COOKIES.get(uploads.COOKIE)),
         "allow_source_change": settings.ALLOW_SOURCE_CHANGE,
         "updated": request.GET.get("updated") == "1",
     }
@@ -26,11 +40,11 @@ def lookup(request):
         if not is_pin(query):
             context["error"] = "A PIN has exactly 6 digits and cannot start with 0."
         else:
-            offices = offices_for_pin(query)
+            offices = offices_for_pin(query, using)
     elif not 2 <= len(query) <= 100:
         context["error"] = "Enter a 6-digit PIN, or 2 to 100 characters of a place name."
     else:
-        offices = search_offices(query)
+        offices = search_offices(query, using)
     if "error" in context:
         return render(request, "postal/lookup.html", context, status=400)
     context["page"] = Paginator(offices, PAGE_SIZE).get_page(request.GET.get("page"))
@@ -70,19 +84,44 @@ class SourceForm(forms.Form):
 
 
 def change_source(request):
-    """Local-only: replace the directory from an uploaded CSV, validated before any write."""
+    """Local-only: validate an uploaded CSV fully, then save it or keep it for this browser.
+
+    Contributor mode (SAVE_UPLOADS) replaces the directory. Otherwise the upload goes to a
+    temporary file that only this browser's lookups read; the database is untouched.
+    """
     if not settings.ALLOW_SOURCE_CHANGE:
         raise Http404("Changing the source is disabled.")
     form = SourceForm(request.POST or None, request.FILES or None)
     if request.method == "POST" and form.is_valid():
-        replace_dataset(
-            form.parsed,
-            source=form.cleaned_data["source"].strip(),
-            source_period=form.cleaned_data["source_period"].strip(),
-        )
-        return redirect("/?updated=1")
-    context = {"form": form, "max_mb": settings.SOURCE_UPLOAD_MAX_BYTES // (1024 * 1024)}
+        details = {
+            "source": form.cleaned_data["source"].strip(),
+            "source_period": form.cleaned_data["source_period"].strip(),
+        }
+        if settings.SAVE_UPLOADS:
+            replace_dataset(form.parsed, **details)
+            return redirect("/?updated=1")
+        previous = uploads.cookie_token(request)
+        token = uploads.store(form.parsed, **details)
+        uploads.discard(previous)
+        response = redirect("/?updated=1")
+        uploads.set_cookie(response, token)
+        return response
+    context = {
+        "form": form,
+        "max_mb": settings.SOURCE_UPLOAD_MAX_BYTES // (1024 * 1024),
+        "saves": settings.SAVE_UPLOADS,
+        "hours": settings.TEMPORARY_UPLOAD_HOURS,
+    }
     return render(request, "postal/source.html", context, status=400 if form.errors else 200)
+
+
+@require_POST
+def default_dataset(request):
+    """Forget this browser's temporary upload and go back to the default dataset."""
+    uploads.discard(uploads.cookie_token(request))
+    response = redirect("/")
+    response.delete_cookie(uploads.COOKIE)
+    return response
 
 
 def favicon(request):

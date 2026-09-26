@@ -10,3 +10,4 @@ __pycache__
 *.sqlite3-wal
 schema.yml
 .secret_key
+.uploads/

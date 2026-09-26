@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parent.parent
 PRINT_SETTINGS = (
     "import json; from django.conf import settings as s; print(json.dumps({k: getattr(s, k) "
     "for k in ['DEBUG', 'SECURE_SSL_REDIRECT', 'SESSION_COOKIE_SECURE', 'CSRF_COOKIE_SECURE', "
-    "'SECURE_HSTS_SECONDS', 'CSRF_TRUSTED_ORIGINS', 'ALLOW_SOURCE_CHANGE', 'SECRET_KEY']}))"
+    "'SECURE_HSTS_SECONDS', 'CSRF_TRUSTED_ORIGINS', 'ALLOW_SOURCE_CHANGE', 'SAVE_UPLOADS', "
+    "'SECRET_KEY']}))"
 )
 
 
@@ -49,7 +50,8 @@ def test_unwritable_secret_key_location_explains_the_fix(tmp_path):
 def test_production_mode_is_the_default_and_needs_no_setup(tmp_path):
     loaded = settings_with(tmp_path)
     assert loaded["DEBUG"] is False
-    assert loaded["ALLOW_SOURCE_CHANGE"] is False
+    # Locally, uploads work out of the box but are temporary.
+    assert (loaded["ALLOW_SOURCE_CHANGE"], loaded["SAVE_UPLOADS"]) == (True, False)
     assert (loaded["SECURE_SSL_REDIRECT"], loaded["SECURE_HSTS_SECONDS"]) == (False, 0)
     assert loaded["SECRET_KEY"] == (tmp_path / ".secret_key").read_text()
 
@@ -68,5 +70,13 @@ def test_https_hardening_and_trusted_origins_are_opt_in(tmp_path):
     assert not (tmp_path / ".secret_key").exists()
 
 
-def test_contributor_mode_enables_change_source(tmp_path):
-    assert settings_with(tmp_path, DJANGO_DEBUG="true")["ALLOW_SOURCE_CHANGE"] is True
+def test_contributor_mode_saves_uploads(tmp_path):
+    loaded = settings_with(tmp_path, DJANGO_DEBUG="true")
+    assert (loaded["ALLOW_SOURCE_CHANGE"], loaded["SAVE_UPLOADS"]) == (True, True)
+
+
+def test_hosting_turns_change_source_off(tmp_path):
+    loaded = settings_with(tmp_path, BHARAT_ALLOW_SOURCE_CHANGE="false")
+    assert loaded["ALLOW_SOURCE_CHANGE"] is False
+    # The Docker image is for hosting, so it ships with change source off.
+    assert "ENV BHARAT_ALLOW_SOURCE_CHANGE=false" in (ROOT / "Dockerfile").read_text()

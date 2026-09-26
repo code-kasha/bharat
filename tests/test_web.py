@@ -101,7 +101,9 @@ GOOD = [
 
 @pytest.fixture
 def local(settings):
+    """Contributor mode: uploads replace the saved directory."""
     settings.ALLOW_SOURCE_CHANGE = True
+    settings.SAVE_UPLOADS = True
 
 
 def test_home_links_to_change_source_only_when_allowed(client, directory, settings):
@@ -183,3 +185,146 @@ def test_upload_requires_csrf_token(directory, local):
 def test_upload_errors_point_to_csv_lines(client, local):
     rows = ["C,R,D,Fine,560001,HO,Delivery,X,Y", "C,R,D,Bad,012345,HO,Delivery,X,Y"]
     assert "line 3: PIN must contain" in upload(client, rows).content.decode()
+
+
+@pytest.fixture
+def temporary(settings):
+    """Production mode on a local clone: uploads are temporary and private to one browser."""
+    settings.ALLOW_SOURCE_CHANGE = True
+    settings.SAVE_UPLOADS = False
+
+
+def stored(upload_dir):
+    return sorted(upload_dir.glob("*.sqlite3")) if upload_dir.exists() else []
+
+
+def test_temporary_upload_is_seen_only_by_this_browser(client, directory, temporary, upload_dir):
+    from django.test import Client
+
+    from postal.models import Dataset, PostOffice
+
+    response = upload(client, GOOD, source_date="2025-06-30")
+    assert response.status_code == 302 and response["Location"] == "/?updated=1"
+    cookie = response.cookies["bharat_upload"]
+    assert cookie["httponly"] and cookie["samesite"] == "Lax"
+    assert len(stored(upload_dir)) == 1
+    # The saved directory is untouched.
+    assert Dataset.objects.get().source == "test fixture"
+    assert PostOffice.objects.filter(office_name="New Office").count() == 0
+
+    html = client.get("/?updated=1").content.decode()
+    assert "Temporary dataset loaded: 2 offices." in html
+    assert "My survey" in html and "30 June 2025" in html and "Kept until" in html
+    assert 'action="/source/default/"' in html and "Back to the default dataset" in html
+    assert "New Office" in client.get("/", {"q": "560001"}).content.decode()
+    assert "0 results" in client.get("/", {"q": "400001"}).content.decode()
+
+    other = Client()
+    assert "New Office" not in other.get("/", {"q": "560001"}).content.decode()
+    assert "test fixture" in other.get("/").content.decode()
+    assert client.get("/api/v1/pincodes/560001/").status_code == 404
+    assert client.get("/api/v1/dataset/").json()["source"] == "test fixture"
+
+
+def test_temporary_lookup_stays_one_request(client, directory, temporary, monkeypatch):
+    from contextlib import contextmanager
+
+    from django.db import connections
+
+    from postal import uploads
+
+    upload(client, GOOD)
+    html = client.get("/", {"q": "560001"}).content.decode()
+    assert not re.search(r"<script|<img|<link[^>]+stylesheet|@import|url\(", html)
+    opened = []
+    real_open = uploads._open
+
+    @contextmanager
+    def spy(alias, name):
+        with real_open(alias, name) as opened_alias:
+            connections[opened_alias].force_debug_cursor = True
+            opened.append(connections[opened_alias])
+            yield opened_alias
+
+    monkeypatch.setattr(uploads, "_open", spy)
+    client.get("/", {"q": "560001", "page": 1})
+    # Dataset label, result count, one page of offices; the connection is closed afterwards.
+    (connection,) = opened
+    assert len(connection.queries) == 3 and connection.connection is None
+
+
+def test_back_to_default_deletes_the_upload(client, directory, temporary, upload_dir):
+    upload(client, GOOD)
+    assert client.get("/source/default/").status_code == 405
+    response = client.post("/source/default/")
+    assert response.status_code == 302 and response["Location"] == "/"
+    assert response.cookies["bharat_upload"].value == ""
+    assert stored(upload_dir) == []
+    html = client.get("/").content.decode()
+    assert "test fixture" in html and "expired" not in html
+
+
+def test_back_to_default_requires_csrf_token(directory, temporary, upload_dir):
+    from django.test import Client
+
+    strict = Client(enforce_csrf_checks=True)
+    token = strict.get("/source/").cookies["csrftoken"].value
+    upload(strict, GOOD, csrfmiddlewaretoken=token)
+    assert strict.post("/source/default/").status_code == 403
+    assert len(stored(upload_dir)) == 1
+
+
+def test_expired_upload_falls_back_to_default(client, directory, temporary, upload_dir, settings):
+    import os
+    import time
+
+    upload(client, GOOD)
+    (path,) = stored(upload_dir)
+    old = time.time() - settings.TEMPORARY_UPLOAD_HOURS * 3600 - 1
+    os.utime(path, (old, old))
+    response = client.get("/")
+    html = response.content.decode()
+    assert "test fixture" in html and "has expired or was removed" in html
+    assert response.cookies["bharat_upload"].value == ""
+    assert stored(upload_dir) == []
+
+
+def test_tampered_cookie_is_ignored(client, directory, temporary, upload_dir):
+    upload(client, GOOD)
+    (path,) = stored(upload_dir)
+    client.cookies["bharat_upload"] = path.stem
+    assert "test fixture" in client.get("/").content.decode()
+
+
+def test_new_upload_replaces_this_browsers_previous_one(client, directory, temporary, upload_dir):
+    upload(client, GOOD)
+    first = stored(upload_dir)
+    upload(client, GOOD[2:], source="Second")
+    assert len(stored(upload_dir)) == 1 and stored(upload_dir) != first
+    assert "Second" in client.get("/").content.decode()
+
+
+def test_uploads_are_capped(directory, temporary, upload_dir, settings):
+    from django.test import Client
+
+    settings.TEMPORARY_UPLOAD_LIMIT = 2
+    browsers = [Client() for _ in range(3)]
+    for number, browser in enumerate(browsers):
+        upload(browser, GOOD, source=f"Browser {number}")
+    assert len(stored(upload_dir)) == 2
+    # The oldest upload made room for the newest.
+    assert "test fixture" in browsers[0].get("/").content.decode()
+    assert "Browser 2" in browsers[2].get("/").content.decode()
+
+
+def test_rejected_temporary_upload_keeps_nothing(client, directory, temporary, upload_dir):
+    response = upload(client, ["C,R,D,Bad,012345,HO,Delivery,X,Y"])
+    assert response.status_code == 400 and "Nothing was changed" in response.content.decode()
+    assert stored(upload_dir) == [] and "bharat_upload" not in response.cookies
+
+
+def test_change_source_page_explains_the_mode(client, temporary, settings):
+    html = client.get("/source/").content.decode()
+    assert "Upload and use in this browser" in html and "DJANGO_DEBUG=true" in html
+    settings.SAVE_UPLOADS = True
+    assert "Upload and replace directory" in client.get("/source/").content.decode()

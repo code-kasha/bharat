@@ -14,8 +14,11 @@ Bharat is a read-only Django REST Framework postal directory. Use Python 3.13 an
 
 - `postal/importer.py` owns fetching, CSV parsing, validation and transactional replacement. The only
   writers are `fetch_postal_data` and the local change-source page (`/source/`), both through the importer.
-- The change-source page has no authentication: keep it local-only (`ALLOW_SOURCE_CHANGE` follows DEBUG)
-  and CSRF-protected. No CSV files are stored in the repository.
+- The change-source page has no authentication: keep it local-only and CSRF-protected. It is on in a clone
+  and off in the Docker image and on hosted sites (`BHARAT_ALLOW_SOURCE_CHANGE=false`). With `DEBUG` it
+  replaces the database; otherwise `postal/uploads.py` keeps the upload in a scratch SQLite file that only
+  the uploading browser's lookup page reads. The API and export always serve the default dataset. No CSV
+  files are stored in the repository.
 - A PIN is a six-character string and can map to many offices. Do not make PIN unique.
 - Fully validate imports before mutation; failures must preserve the current data and metadata.
 - Collapse exact duplicate rows, reject conflicting office identities, and report counts.

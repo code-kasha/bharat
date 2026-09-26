@@ -53,11 +53,14 @@ Bharat is meant to run locally, so you can replace the directory with your own C
 
 The CSV uses the directory's column layout: `Circle Name`, `Region Name`, `Division Name`, `Office Name`, `Pincode`, `OfficeType`, `Delivery`, `District` and `StateName`, in any order. Spaces, underscores and case in column names are ignored. `Latitude` and `Longitude` are optional; other columns are ignored. The file must be UTF-8 (Excel's "CSV UTF-8") and at most 100 MB.
 
-The upload goes through the same importer as `fetch_postal_data`. The whole file is validated before anything is written; any invalid row rejects the file, the page lists up to 10 problems by CSV line number, and the current directory stays untouched. A valid file replaces every office and the source details in one transaction. Exact repeated rows are merged; an office listed twice with different details (same PIN, state, district and office name) is rejected.
+The upload goes through the same importer as `fetch_postal_data`. The whole file is validated before anything is written; any invalid row rejects the file, the page lists up to 10 problems by CSV line number, and nothing is kept. Exact repeated rows are merged; an office listed twice with different details (same PIN, state, district and office name) is rejected.
 
-The page has no login, so it is enabled only for local use. It is on while `DJANGO_DEBUG` is `true`, which is the default for `runserver` and the Docker image, and off otherwise. `BHARAT_ALLOW_SOURCE_CHANGE=false` turns it off locally; `true` forces it on. When it is off, `/source/` returns 404 and the link is hidden. The form is protected by Django's CSRF check.
+What happens to a valid file depends on the mode:
 
-The upload changes the database it runs against: `db.sqlite3` in a clone, or `/data/bharat.sqlite3` in a container. To keep the bundled data, run `git restore db.sqlite3` in a clone; a container without a volume starts from the bundled data again.
+- **Default (production) mode: temporary.** The upload is stored in its own scratch SQLite file under `.uploads/` next to the database, named by a signed, HTTP-only cookie. Only that browser sees it, on the lookup page and in search; the API, the export and `db.sqlite3` keep the default dataset. The data panel shows the upload's details and when it will be deleted (after 24 hours), with a **Back to the default dataset** button. A new upload replaces the browser's previous one, and at most 5 uploads are kept at once; the oldest is deleted first.
+- **Contributor mode (`DJANGO_DEBUG=true`): saved.** A valid file replaces every office and the source details in `db.sqlite3` (or whatever `SQLITE_PATH` names) in one transaction. To go back to the bundled data, run `git restore db.sqlite3`.
+
+The page has no login, so it is for local use. It is on by default when you run Bharat from a clone. A hosted site must set `BHARAT_ALLOW_SOURCE_CHANGE=false`; the Docker image, which is meant for hosting, already does. When it is off, `/source/` returns 404 and the link is hidden. To use your own dataset with the hosted setup, run Bharat locally or deploy it yourself. The forms are protected by Django's CSRF check.
 
 ## API
 
@@ -172,11 +175,11 @@ Environment variables are read by Django. `.env` files are not automatically loa
 
 | Variable | Local default / purpose |
 | --- | --- |
-| `DJANGO_DEBUG` | `true`; must be `false` on a public deployment |
+| `DJANGO_DEBUG` | `false` (production mode); `true` is contributor mode and saves uploads over the database |
 | `DJANGO_SECRET_KEY` | Development-only fallback; provide a generated secret in production |
 | `DJANGO_ALLOWED_HOSTS` | `localhost,127.0.0.1,[::1]`; comma-separated hostnames |
 | `SQLITE_PATH` | `db.sqlite3` in the repository; `/data/bharat.sqlite3` in the container |
-| `BHARAT_ALLOW_SOURCE_CHANGE` | Follows `DJANGO_DEBUG`; enables the local [change-source page](#changing-the-source) |
+| `BHARAT_ALLOW_SOURCE_CHANGE` | `true` in a clone, `false` in the Docker image; enables the local [change-source page](#changing-the-source). Set `false` on any hosted site |
 | `DATA_GOV_IN_API_KEY` | Required only by `fetch_postal_data` |
 | `TRUST_PROXY_HTTPS` | `false`; enable only behind a trusted TLS proxy that strips incoming forwarding headers |
 

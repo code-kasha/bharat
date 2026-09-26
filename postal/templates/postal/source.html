@@ -4,7 +4,7 @@
 
 {% block heading %}Change source{% endblock %}
 
-{% block intro %}<p class="muted">Replace the directory with your own CSV file. <a href="/">Back to lookup</a></p>{% endblock %}
+{% block intro %}<p class="muted">{% if saves %}Replace the directory with your own CSV file.{% else %}Try the lookup with your own CSV file.{% endif %} <a href="/">Back to lookup</a></p>{% endblock %}
 
 {% block content %}
   {% if form.errors %}
@@ -15,7 +15,11 @@
   </div>
   {% endif %}
 
+  {% if saves %}
   <p>The whole file is checked before anything changes. If any row is invalid, the current directory stays exactly as it is. A valid file replaces every office at once.</p>
+  {% else %}
+  <p>The whole file is checked first; if any row is invalid, nothing is kept. A valid file is temporary: only this browser sees it, on the lookup page and in search, for {{ hours }} hours or until you go back to the default dataset. The saved directory, the API and the whole-directory download are not changed. To replace the saved directory, run Bharat with <code>DJANGO_DEBUG=true</code>.</p>
+  {% endif %}
 
   <details>
     <summary>What the CSV must contain</summary>
@@ -56,6 +60,6 @@
       <input id="id_source_period" name="source_period" type="text" maxlength="100" value="{{ form.source_period.value|default_if_none:'' }}"
              aria-describedby="source-period-hint{% if form.source_period.errors %} source-period-error{% endif %}"{% if form.source_period.errors %} aria-invalid="true"{% endif %}>
     </div>
-    <button type="submit">Upload and replace directory</button>
+    <button type="submit">{% if saves %}Upload and replace directory{% else %}Upload and use in this browser{% endif %}</button>
   </form>
 {% endblock %}

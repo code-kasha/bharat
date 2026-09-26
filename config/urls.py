@@ -10,12 +10,13 @@ from postal.views import (
     StateListView,
     health,
 )
-from postal.web import change_source, favicon, lookup
+from postal.web import change_source, default_dataset, favicon, lookup
 
 urlpatterns = [
     path("", lookup, name="lookup"),
     path("favicon.ico", favicon),
     path("source/", change_source, name="change_source"),
+    path("source/default/", default_dataset, name="default_dataset"),
     path("health/", health),
     path("api/v1/offices/", OfficeListView.as_view(), name="offices"),
     path("api/v1/pincodes/<str:pincode>/", PinLookupView.as_view(), name="pincode"),

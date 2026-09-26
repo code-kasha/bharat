@@ -11,7 +11,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from django.db import transaction
+from django.db import DEFAULT_DB_ALIAS, transaction
 
 from postal.models import Dataset, PostOffice
 
@@ -187,26 +187,28 @@ def parse_csv(raw):
     return parsed
 
 
-@transaction.atomic
-def replace_dataset(parsed, *, source, source_period=""):
+def replace_dataset(parsed, *, source, source_period="", using=DEFAULT_DB_ALIAS):
+    """Swap in a validated dataset; `using` also targets a temporary upload's own database."""
     # SQLite's IMMEDIATE transactions (see settings) serialize concurrent imports.
-    current, _ = Dataset.objects.get_or_create(pk=1, defaults={"source": source, "row_count": 0})
-    if (current.checksum, current.source, current.source_date, current.source_period) == (
-        parsed.checksum,
-        source,
-        parsed.source_date,
-        source_period,
-    ):
-        return False
-    PostOffice.objects.all().delete()
-    PostOffice.objects.bulk_create(
-        [PostOffice(**office) for office in parsed.offices], batch_size=1000
-    )
-    current.source = source
-    current.source_date = parsed.source_date
-    current.source_period = source_period
-    current.checksum = parsed.checksum
-    current.row_count = len(parsed.offices)
-    current.duplicate_count = parsed.duplicates
-    current.save()
-    return True
+    with transaction.atomic(using=using):
+        current, _ = Dataset.objects.db_manager(using).get_or_create(
+            pk=1, defaults={"source": source, "row_count": 0}
+        )
+        if (current.checksum, current.source, current.source_date, current.source_period) == (
+            parsed.checksum,
+            source,
+            parsed.source_date,
+            source_period,
+        ):
+            return False
+        offices = PostOffice.objects.db_manager(using)
+        offices.all().delete()
+        offices.bulk_create([PostOffice(**office) for office in parsed.offices], batch_size=1000)
+        current.source = source
+        current.source_date = parsed.source_date
+        current.source_period = source_period
+        current.checksum = parsed.checksum
+        current.row_count = len(parsed.offices)
+        current.duplicate_count = parsed.duplicates
+        current.save(using=using)
+        return True

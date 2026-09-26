@@ -41,7 +41,7 @@ Pick up from here. Nothing below is started unless marked done.
    - HTTPS redirect, HSTS and secure cookies only when explicitly enabled (e.g. `DJANGO_HTTPS=true`), so `http://localhost` works in production mode.
    - Add `DJANGO_CSRF_TRUSTED_ORIGINS` for the hosted domain. Check error pages and the Swagger UI (CDN assets) with `DEBUG=false`.
    - Update `.env.example`: it still sets `DJANGO_DEBUG=true`. Deliberately left until this task, because switching it earlier breaks anyone using it.
-2. **Temporary uploads (production mode, local)**
+2. **Temporary uploads (production mode, local)** — DONE (`release-v1`). `postal/uploads.py`: one scratch SQLite file per browser under `.uploads/` next to the database, signed HTTP-only cookie, 24-hour expiry, at most 5 kept (oldest deleted first), 100 MB upload cap. Change source is now on by default in a clone; the Dockerfile sets `BHARAT_ALLOW_SOURCE_CHANGE=false` because the image is for hosting. README "Changing the source" and AGENTS.md updated; full docs remain task 7.
    - Store each upload in its own scratch SQLite file under a temp/data directory, keyed by a signed cookie. Expire and delete after a set time; cap the size.
    - The lookup page and search read from it; the source label shows the uploaded file's details. The API and export keep serving the default dataset.
    - "Back to the default dataset" button. Keep one request per page.
