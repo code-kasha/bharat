@@ -21,7 +21,7 @@ wheels = [
 ]
 
 [[package]]
-name = "bharat"
+name = "bharat-post-dir"
 version = "0.3.0"
 source = { virtual = "." }
 dependencies = [

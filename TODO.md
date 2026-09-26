@@ -68,9 +68,9 @@ Pick up from here. Nothing below is started unless marked done.
    - No server or domain is available, so run the image exactly as the README's production instructions say: production mode, a volume, and a local Caddy proxy with HTTPS in front.
    - Check the lookup page, search, export, health, that `/source/` is off, and that data survives a restart. Report anything that needs a real domain to verify.
 9. **Checkpoint** — DONE. All checks pass locally (113 tests); CI green on every `release-v1` push through `3d529df`. README validation notes updated. CI runs on every push and pull request.
-10. **Rename the repository to `bharat-post-dir`** (confirm with the user right before running it; it is public-facing)
+10. **Rename the repository to `bharat-post-dir`** — DONE. Renamed on GitHub by the user; references updated (README clone URL, folder and image names, `REPOSITORY_URL`, `pyproject.toml` and regenerated `uv.lock`). Kept on purpose: container name `bharat`, volume `bharat-data` (renaming would orphan existing data), Django packages. The "memory note" lives outside this repository; update it on the machine that has it. (confirm with the user right before running it; it is public-facing)
    - `gh repo rename bharat-post-dir`; update the local `origin` remote. GitHub redirects old URLs, but update every reference anyway.
-   - References to update: README clone URL and links, the PR link in the "Share this dataset" note, `pyproject.toml` name, Docker image names in docs (`bharat:local` to `bharat-post-dir`), `ghcr.io/code-kasha/bharat-post-dir` (CI derives it from the repo name), AGENTS.md, CONTRIBUTING.md and the memory note.
+   - References to update: README clone URL and links, the PR link in the "Share this dataset" note, `pyproject.toml` name, Docker image names in docs (`bharat:local` to `bharat-post-dir:local`), `ghcr.io/code-kasha/bharat-post-dir` (CI derives it from the repo name), AGENTS.md, CONTRIBUTING.md and the memory note.
    - Keep the internal Django package names (`config`, `postal`) as they are.
 11. **Screenshots** (after tasks 1–5, so they show the final UI)
    - Home page (light and dark), "Delhi" search results, phone view, change-source page, "Share this dataset" note, API docs.

@@ -329,7 +329,7 @@ def test_saved_upload_offers_to_share_the_dataset(client, directory, local):
     upload(client, GOOD, source="Survey's; rm -rf /", source_date="2025-06-30")
     html = client.get("/?updated=1").content.decode()
     assert "Share this dataset" in html
-    assert 'href="https://github.com/code-kasha/bharat"' in html
+    assert 'href="https://github.com/code-kasha/bharat-post-dir"' in html
     assert "may not be reviewed" in html and "publish your fork" in html
     from postal.models import Dataset
 

@@ -9,11 +9,11 @@ An Indian postal directory API built with Django REST Framework and SQLite. Look
 Install [Git](https://git-scm.com/downloads), then clone the repository and enter it:
 
 ```sh
-git clone https://github.com/code-kasha/bharat.git
-cd bharat
+git clone https://github.com/code-kasha/bharat-post-dir.git
+cd bharat-post-dir
 ```
 
-The clone includes `db.sqlite3` (about 28 MB) with the bundled directory. Every command below runs from this `bharat` folder.
+The clone includes `db.sqlite3` (about 28 MB) with the bundled directory. Every command below runs from this `bharat-post-dir` folder.
 
 ## Quick start
 
@@ -218,8 +218,8 @@ Tests cover one-to-many PIN lookup, input validation, filters, pagination, state
 These commands are identical in bash, zsh, PowerShell, cmd and Git Bash. From the repository root, once Docker's engine is running:
 
 ```sh
-docker build -t bharat:local .
-docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat:local
+docker build -t bharat-post-dir:local .
+docker run -d --rm --name bharat-demo -p 127.0.0.1:18000:8000 bharat-post-dir:local
 ```
 
 The image bundles `db.sqlite3` as `/data/bharat.sqlite3` and applies migrations when it starts, so the API serves the full directory immediately. It is built for hosting: it runs in production mode, and the change-source page is off (`BHARAT_ALLOW_SOURCE_CHANGE=false`). To try uploads in a local container, add `-e BHARAT_ALLOW_SOURCE_CHANGE=true` to `docker run`; never do that on a public server. Open these in a browser, or fetch them with `curl` (in Windows PowerShell 5.1 type `curl.exe`, because `curl` is an alias there):
@@ -234,7 +234,7 @@ When finished, run `docker stop bharat-demo`; `--rm` removes the container.
 Each new container starts from the bundled database. To keep data you fetch inside the container, add a named volume; on first use, Docker seeds an empty named volume with the bundled database. Set `DATA_GOV_IN_API_KEY` in your shell as shown in [Quick start](#quick-start). `-e DATA_GOV_IN_API_KEY` with no value passes it through without the key appearing in the command:
 
 ```sh
-docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat:local
+docker run -d --rm --name bharat-demo -v bharat-data:/data -p 127.0.0.1:18000:8000 bharat-post-dir:local
 docker exec -e DATA_GOV_IN_API_KEY bharat-demo python manage.py fetch_postal_data
 ```
 
@@ -297,7 +297,7 @@ The commands below are for a Linux server shell. Replace `bharat.example.com` wi
 1. Build the image on the server (or push it from elsewhere), and create a network the proxy and the app share:
 
    ```sh
-   docker build -t bharat:local .
+   docker build -t bharat-post-dir:local .
    docker network create bharat
    ```
 
@@ -310,7 +310,7 @@ The commands below are for a Linux server shell. Replace `bharat.example.com` wi
      -e DJANGO_CSRF_TRUSTED_ORIGINS=https://bharat.example.com \
      -e DJANGO_HTTPS=true -e TRUST_PROXY_HTTPS=true \
      -e BHARAT_ALLOW_SOURCE_CHANGE=false \
-     bharat:local
+     bharat-post-dir:local
    ```
 
    On first use the empty `bharat-data` volume is seeded with the bundled directory. The secret key is created once in `/data/.secret_key` on the volume, so it survives restarts; set `DJANGO_SECRET_KEY` instead if you prefer to manage it. `BHARAT_ALLOW_SOURCE_CHANGE=false` is the image's default, repeated so a hosted site never enables the unauthenticated change-source page. To serve your own dataset, load it locally in contributor mode first and build the image from that `db.sqlite3`, or run `fetch_postal_data` in the container.
@@ -348,7 +348,7 @@ Back up before every update, because migrations run automatically when the conta
 **Rollback.** Migrations only move forward, so roll back the image and the data together. Stop and remove the container, then restore the backup into the volume from the folder that holds `bharat-backup.sqlite3`:
 
 ```sh
-docker run --rm -v bharat-data:/data -v "$PWD":/backup --entrypoint sh bharat:local \
+docker run --rm -v bharat-data:/data -v "$PWD":/backup --entrypoint sh bharat-post-dir:local \
   -c "rm -f /data/bharat.sqlite3 /data/bharat.sqlite3-wal /data/bharat.sqlite3-shm && cp /backup/bharat-backup.sqlite3 /data/bharat.sqlite3"
 ```
 

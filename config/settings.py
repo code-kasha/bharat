@@ -55,7 +55,7 @@ TEMPORARY_UPLOAD_DIR = DATABASE_PATH.parent / ".uploads"
 TEMPORARY_UPLOAD_HOURS = 24
 TEMPORARY_UPLOAD_LIMIT = 5
 # Where saved datasets can be shared back (the "Share this dataset" note).
-REPOSITORY_URL = "https://github.com/code-kasha/bharat"
+REPOSITORY_URL = "https://github.com/code-kasha/bharat-post-dir"
 WSGI_APPLICATION = "config.wsgi.application"
 TEMPLATES = [
     {
