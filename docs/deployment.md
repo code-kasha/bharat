@@ -4,7 +4,13 @@ The Docker image is built for hosting: it runs in production mode with the chang
 
 ## Run the image locally
 
-These commands are identical in bash, zsh, PowerShell, cmd and Git Bash. From the repository root, once Docker's engine is running:
+Each release publishes the image as `ghcr.io/code-kasha/bharat-post-dir`, tagged with its version (for example `v1.0.0`) and `latest`, for amd64 and arm64. These commands are identical in bash, zsh, PowerShell, cmd and Git Bash, once Docker's engine is running:
+
+```sh
+docker run -d --rm --name app-demo -p 127.0.0.1:18000:8000 ghcr.io/code-kasha/bharat-post-dir:v1.0.0
+```
+
+To build the image from a clone instead, run this from the repository root and use `bharat-post-dir:local` in place of the published name, here and in the steps below:
 
 ```sh
 docker build -t bharat-post-dir:local .
@@ -41,7 +47,7 @@ Run one container on a server with a persistent volume at `/data`, and put a TLS
 
 The commands below are for a Linux server shell. Replace `example.com` with your domain, and point its DNS at the server first so the proxy can obtain a certificate.
 
-1. Build the image on the server (or push it from elsewhere), and create a network the proxy and the app share:
+1. Build the image on the server, or use the published `ghcr.io/code-kasha/bharat-post-dir:v1.0.0` in place of `bharat-post-dir:local` below. Then create a network the proxy and the app share:
 
    ```sh
    docker build -t bharat-post-dir:local .

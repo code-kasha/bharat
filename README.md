@@ -1,11 +1,13 @@
 A helper that tells you which India Post offices sit behind a PIN code or place name, ready to drop into your own applications as a JSON API or a Docker image. Read the [project write-up](http://localhost:3000/projects/bharat-post-dir) for background.
 
 [![CI](https://github.com/code-kasha/bharat-post-dir/actions/workflows/ci.yml/badge.svg)](https://github.com/code-kasha/bharat-post-dir/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/code-kasha/bharat-post-dir)](https://github.com/code-kasha/bharat-post-dir/releases/latest)
+[![Container image](https://img.shields.io/badge/container-ghcr.io-2496ed?logo=docker&logoColor=white)](https://github.com/code-kasha/bharat-post-dir/pkgs/container/bharat-post-dir)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python 3.13](https://img.shields.io/badge/python-3.13-blue.svg)](https://www.python.org/)
 [![Django 5.2 LTS](https://img.shields.io/badge/django-5.2%20LTS-0c4b33.svg)](https://docs.djangoproject.com/en/5.2/)
 
-[API reference](docs/api.md) · [Download the whole directory](docs/api.md#the-whole-directory-in-one-download) · [Your own dataset](docs/datasets.md) · [Deploy it yourself](docs/deployment.md) · [Contributing](CONTRIBUTING.md)
+[Download v1.0.0](https://github.com/code-kasha/bharat-post-dir/releases/latest) · [API reference](docs/api.md) · [Download the whole directory](docs/api.md#the-whole-directory-in-one-download) · [Your own dataset](docs/datasets.md) · [Deploy it yourself](docs/deployment.md) · [Contributing](CONTRIBUTING.md)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/images/home-dark.png">
@@ -41,12 +43,13 @@ uv run python manage.py runserver
 
 Then open the [lookup page](http://127.0.0.1:8000/), the [API documentation](http://127.0.0.1:8000/api/docs/) or [a PIN lookup in JSON](http://127.0.0.1:8000/api/v1/pincodes/110001/).
 
-**With Docker.** These commands are the same in bash, zsh, PowerShell, cmd and Git Bash:
+**With Docker.** No clone needed: run the published image (amd64 and arm64). These commands are the same in bash, zsh, PowerShell, cmd and Git Bash:
 
 ```sh
-docker build -t bharat-post-dir:local .
-docker run -d --rm --name app-demo -p 127.0.0.1:18000:8000 bharat-post-dir:local
+docker run -d --rm --name app-demo -p 127.0.0.1:18000:8000 ghcr.io/code-kasha/bharat-post-dir:v1.0.0
 ```
+
+Or build it from your clone with `docker build -t bharat-post-dir:local .` and run `bharat-post-dir:local` instead.
 
 Then open [127.0.0.1:18000](http://127.0.0.1:18000/). Run `docker stop app-demo` when finished. New to Docker on Windows? See [docs/docker-windows.md](docs/docker-windows.md).
 
@@ -96,7 +99,7 @@ Without a running server, `uv run python manage.py export_directory` writes the 
 ## Use it in your application
 
 - **Call the API** from any language: it is plain JSON over HTTP with an OpenAPI schema at `/api/schema/`, so you can generate a client.
-- **Run the Docker image** next to your application. It bundles the directory, applies its migrations on start, and needs no database server or other service.
+- **Run the Docker image** (`ghcr.io/code-kasha/bharat-post-dir`) next to your application. It bundles the directory, applies its migrations on start, and needs no database server or other service.
 - **Take the export** if you only need the data: one JSON file with every office, to load into your own database or ship with your application.
 
 ## Your own dataset
