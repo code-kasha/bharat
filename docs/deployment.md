@@ -115,7 +115,7 @@ Also **verified on Windows 11** with Docker Desktop (Engine 29.8.0) and Caddy 2 
 
 ## Hosted demo
 
-The public demo runs on [Render](https://render.com/)'s free tier until 26 December 2026, then shuts down as planned. Free services sleep after 15 minutes without traffic, so the first request after that takes about a minute. The demo serves the bundled directory read-only, with the change-source page off, so it needs no persistent disk; the secret key lives on the container's temporary disk.
+The public demo, [bharat-post-dir.onrender.com](https://bharat-post-dir.onrender.com/), runs on [Render](https://render.com/)'s free tier until 26 December 2026, then shuts down as planned. Free services sleep after 15 minutes without traffic, so the first request after that takes about a minute. The demo serves the bundled directory read-only, with the change-source page off, so it needs no persistent disk; the secret key lives on the container's temporary disk.
 
 It is built from this repository's `Dockerfile` on `main`. Render's own auto-deploy is off: after every push to `main`, the `deploy` job in CI waits for the checks, triggers Render's deploy hook, and waits until `/health/` reports the new commit (`revision`, which Render provides as `RENDER_GIT_COMMIT`). The job appears as the `production` environment in the repository's Deployments.
 
